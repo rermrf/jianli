@@ -24,17 +24,59 @@
 |------|------|------|------|
 | GET | `/api/resume` | 获取简历 JSON | 否 |
 | PUT | `/api/resume` | 更新简历 | 需要 |
-| GET | `/api/resume/pdf` | 导出 PDF | 否 |
-| GET | `/api/visitors` | 获取访客记录 | 需要 |
-| POST | `/api/visitors` | 记录访客 | 否 |
+| GET | `/api/resume/pdf` | 导出 PDF（A4，chromedp 渲染 `/print` 路由） | 否 |
+| POST | `/api/auth/verify` | 验证 Key，返回 ` "valid": true }` | 否 |
+| GET | `/api/visitors` | 获取访客记录，支持 `?page=&limit=&days=` 分页筛选 | 需要 |
+| GET | `/api/visitors/stats` | 聚合统计（总量/今日/独立访客/平均停留），支持 `?days=` | 需要 |
+| POST | `/api/visitors` | 记录访客（IP 去重，同 IP 10分钟内不重复记录） | 否 |
+| PATCH | `/api/visitors/:id` | 更新停留时长（前端 `navigator.sendBeacon` 页面离开时上报） | 否 |
 
 ### 认证方式
 
 请求头 `X-Auth-Key` 匹配环境变量 `AUTH_KEY`。访客打开简历页面无需认证，编辑和访客统计功能需要 Key 登录。
 
+- 前端登录后将 Key 存入 `sessionStorage`，axios 拦截器自动注入请求头
+- 收到 401 响应时自动跳转到登录页
+- 关闭浏览器 Tab 后 session 失效
+
+### 前端路由
+
+| 路径 | 页面 | 认证 |
+|------|------|------|
+| `/` | 简历展示页 | 否 |
+| `/login` | Key 登录页 | 否 |
+| `/edit` | 简历编辑页 | 需要（未认证跳转 `/login`） |
+| `/visitors` | 访客统计页 | 需要（未认证跳转 `/login`） |
+| `/print` | PDF 打印专用页（隐藏导航，A4 排版） | 否 |
+
+### API 响应格式
+
+```json
+// 成功
+{ "code": 0, "data": { ... } }
+
+// 错误
+{ "code": 40001, "message": "invalid auth key" }
+```
+
+常用 HTTP 状态码：200（成功）、400（参数错误）、401（未认证）、500（服务端错误）。
+
 ## 数据模型
 
 ### Resume（JSON 存储于 SQLite）
+
+Resume 表结构：
+
+```sql
+CREATE TABLE resume (
+  id INTEGER PRIMARY KEY DEFAULT 1,
+  data TEXT NOT NULL,           -- JSON 格式简历数据
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+-- 只有一行数据，id 固定为 1
+```
+
+JSON 结构：
 
 ```json
 {
@@ -127,10 +169,13 @@
 **移动端**：顶部取消/保存导航 + 垂直表单
 - 基本信息：姓名、职位、手机、邮箱输入框
 - 技能编辑：标签 + X删除按钮 + 添加按钮
-- 工作经历：卡片式表单（公司、职位、工作内容文本框）
+- 工作经历：卡片式表单（公司、职位、时间、工作内容文本框）+ 添加按钮
+- 项目经历：卡片式表单（项目名、时间、描述文本框）+ 添加按钮
+- 教育经历：学校、专业、学历、时间 + 添加按钮
+- 荣誉奖项：日期 + 奖项名称 + 添加/删除
 
 **PC端**：顶部导航（取消+保存按钮）+ 两栏表单
-- 左栏（480px）：基本信息表单（双列排列）+ 技能编辑
+- 左栏（480px）：基本信息表单（双列排列）+ 技能编辑 + 教育经历 + 荣誉奖项
 - 右栏（自适应）：工作经历表单 + 项目经历表单
 
 #### 3. 访客统计页（需认证）
@@ -176,6 +221,11 @@ jianli/
 │   │   ├── resume.go
 │   │   ├── visitor.go
 │   │   └── auth.go
+│   ├── middleware/            # Gin 中间件
+│   │   ├── auth.go           # Key 认证
+│   │   └── cors.go           # CORS（开发环境）
+│   ├── config/               # 配置管理
+│   │   └── config.go         # PORT, AUTH_KEY, DB_PATH 等
 │   ├── model/                # 数据模型
 │   │   ├── resume.go
 │   │   └── visitor.go
@@ -209,13 +259,24 @@ jianli/
 | 数据库 | SQLite | 单用户场景，零配置，单文件备份 |
 | PDF导出 | chromedp | 高保真渲染，支持 CSS 样式 |
 | 前端路由 | React Router | SPA 标准方案 |
-| 内联编辑 | contentEditable + 受控组件 | 所见即所得 |
+| 内联编辑 | 表单编辑模式 | 独立编辑页面使用传统表单，可靠性优于 contentEditable |
 | IP 解析 | ip2region 离线库 | 无外部依赖，响应快 |
 | 部署 | go:embed 嵌入前端 | 单二进制分发 |
 
 ## 非功能需求
 
 - **性能**：首屏加载 < 2s，API 响应 < 200ms
-- **SEO**：简历展示页需要基本的 meta 标签
-- **安全**：Key 认证保护编辑和统计功能，访客 IP 脱敏展示
+- **安全**：Key 认证保护编辑和统计功能，访客 IP 脱敏展示（显示前两段 + `***.***`，如 `112.17.***.***`）
 - **兼容性**：Chrome/Safari/Firefox 最新版，iOS/Android 移动端浏览器
+
+### 配置项
+
+| 环境变量 | 默认值 | 说明 |
+|----------|--------|------|
+| `PORT` | `8080` | 服务监听端口 |
+| `AUTH_KEY` | （必填） | 管理后台访问密钥 |
+| `DB_PATH` | `./data/resume.db` | SQLite 数据库文件路径 |
+
+### 数据库初始化
+
+应用首次启动时自动建表（`AutoMigrate`），并从 Word 简历导入初始数据作为种子数据。
