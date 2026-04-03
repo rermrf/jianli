@@ -25,7 +25,7 @@
 | GET | `/api/resume` | 获取简历 JSON | 否 |
 | PUT | `/api/resume` | 更新简历 | 需要 |
 | GET | `/api/resume/pdf` | 导出 PDF（A4，chromedp 渲染 `/print` 路由） | 否 |
-| POST | `/api/auth/verify` | 验证 Key，返回 ` "valid": true }` | 否 |
+| POST | `/api/auth/verify` | 验证 Key，返回 `{ "valid": true }` | 否 |
 | GET | `/api/visitors` | 获取访客记录，支持 `?page=&limit=&days=` 分页筛选 | 需要 |
 | GET | `/api/visitors/stats` | 聚合统计（总量/今日/独立访客/平均停留），支持 `?days=` | 需要 |
 | POST | `/api/visitors` | 记录访客（IP 去重，同 IP 10分钟内不重复记录） | 否 |
