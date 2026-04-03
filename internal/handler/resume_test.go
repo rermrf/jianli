@@ -22,7 +22,11 @@ func setupResumeTestRouter(t *testing.T) *gin.Engine {
 	if err != nil {
 		t.Fatalf("Open() returned error: %v", err)
 	}
-	t.Cleanup(func() { _ = db.Close() })
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB() returned error: %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
 
 	resumeHandler := NewResumeHandler(store.NewResumeStore(db))
 	router := gin.New()

@@ -11,7 +11,11 @@ func TestResumeStoreSeedsOnFirstRead(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open() returned error: %v", err)
 	}
-	defer db.Close()
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB() returned error: %v", err)
+	}
+	defer sqlDB.Close()
 
 	store := NewResumeStore(db)
 	resume, err := store.Get()
@@ -35,7 +39,11 @@ func TestResumeStoreSaveReplacesExistingRecord(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open() returned error: %v", err)
 	}
-	defer db.Close()
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB() returned error: %v", err)
+	}
+	defer sqlDB.Close()
 
 	store := NewResumeStore(db)
 	updated := json.RawMessage(`{"profile":{"name":"测试用户"}}`)

@@ -22,7 +22,11 @@ func setupVisitorTestRouter(t *testing.T) *gin.Engine {
 	if err != nil {
 		t.Fatalf("Open() returned error: %v", err)
 	}
-	t.Cleanup(func() { _ = db.Close() })
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB() returned error: %v", err)
+	}
+	t.Cleanup(func() { _ = sqlDB.Close() })
 
 	visitorHandler := NewVisitorHandler(store.NewVisitorStore(db))
 	router := gin.New()
@@ -75,15 +79,6 @@ func TestVisitorHandlerStatsAndUpdateDuration(t *testing.T) {
 	createRecorder := httptest.NewRecorder()
 	router.ServeHTTP(createRecorder, createRequest)
 
-	var createPayload struct {
-		Data struct {
-			ID float64 `json:"id"`
-		} `json:"data"`
-	}
-	if err := json.Unmarshal(createRecorder.Body.Bytes(), &createPayload); err != nil {
-		t.Fatalf("expected create JSON, got error: %v", err)
-	}
-
 	updateRecorder := httptest.NewRecorder()
 	updateRequest := httptest.NewRequest(http.MethodPatch, "/api/visitors/1", strings.NewReader(`{"duration":180}`))
 	updateRequest.Header.Set("Content-Type", "application/json")
@@ -103,7 +98,7 @@ func TestVisitorHandlerStatsAndUpdateDuration(t *testing.T) {
 
 	var statsPayload struct {
 		Data struct {
-			TotalVisits int `json:"totalVisits"`
+			TotalVisits            int `json:"totalVisits"`
 			AverageDurationSeconds int `json:"averageDurationSeconds"`
 		} `json:"data"`
 	}

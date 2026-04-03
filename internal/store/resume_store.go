@@ -1,24 +1,26 @@
 ﻿package store
 
 import (
-	"database/sql"
 	"encoding/json"
 
+	"gorm.io/gorm"
+
+	"jianli/internal/model"
 	"jianli/internal/seed"
 )
 
 type ResumeStore struct {
-	db *sql.DB
+	db *gorm.DB
 }
 
-func NewResumeStore(db *sql.DB) *ResumeStore {
+func NewResumeStore(db *gorm.DB) *ResumeStore {
 	return &ResumeStore{db: db}
 }
 
 func (s *ResumeStore) Get() (json.RawMessage, error) {
-	var data []byte
-	err := s.db.QueryRow(`SELECT data FROM resume WHERE id = 1`).Scan(&data)
-	if err == sql.ErrNoRows {
+	var record model.ResumeRecord
+	err := s.db.First(&record, "id = ?", 1).Error
+	if err == gorm.ErrRecordNotFound {
 		seedData := seed.DefaultResume()
 		if err := s.Save(seedData); err != nil {
 			return nil, err
@@ -29,14 +31,9 @@ func (s *ResumeStore) Get() (json.RawMessage, error) {
 		return nil, err
 	}
 
-	return json.RawMessage(data), nil
+	return json.RawMessage(record.Data), nil
 }
 
 func (s *ResumeStore) Save(data json.RawMessage) error {
-	_, err := s.db.Exec(`
-		INSERT INTO resume (id, data, updated_at)
-		VALUES (1, ?, CURRENT_TIMESTAMP)
-		ON CONFLICT(id) DO UPDATE SET data = excluded.data, updated_at = CURRENT_TIMESTAMP
-	`, []byte(data))
-	return err
+	return s.db.Save(&model.ResumeRecord{ID: 1, Data: []byte(data)}).Error
 }

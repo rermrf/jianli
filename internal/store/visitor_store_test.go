@@ -13,7 +13,11 @@ func TestVisitorStoreDedupesRecentIP(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open() returned error: %v", err)
 	}
-	defer db.Close()
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB() returned error: %v", err)
+	}
+	defer sqlDB.Close()
 
 	store := NewVisitorStore(db)
 	visitTime := time.Now().Add(-5 * time.Minute)
@@ -39,7 +43,11 @@ func TestVisitorStoreStatsAndListRespectDaysFilter(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open() returned error: %v", err)
 	}
-	defer db.Close()
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB() returned error: %v", err)
+	}
+	defer sqlDB.Close()
 
 	store := NewVisitorStore(db)
 	records := []model.VisitorRecord{

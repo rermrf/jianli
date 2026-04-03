@@ -1,10 +1,10 @@
 ﻿package main
 
 import (
-	"database/sql"
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 
 	"jianli/internal/config"
 	"jianli/internal/handler"
@@ -22,14 +22,19 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer db.Close()
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer sqlDB.Close()
 
 	if err := newRouter(cfg, db).Run(":" + cfg.Port); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func newRouter(cfg config.Config, db *sql.DB) *gin.Engine {
+func newRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 	router := gin.New()
 	router.Use(gin.Recovery())
 	router.Use(middleware.CORS(cfg.FrontendOrigin))

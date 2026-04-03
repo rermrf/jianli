@@ -15,7 +15,11 @@ func TestNewRouterRegistersCoreRoutes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Open() returned error: %v", err)
 	}
-	defer db.Close()
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB() returned error: %v", err)
+	}
+	defer sqlDB.Close()
 
 	router := newRouter(config.Config{AuthKey: "resume-key"}, db)
 
