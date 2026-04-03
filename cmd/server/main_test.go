@@ -1,0 +1,48 @@
+﻿package main
+
+import (
+	"net/http"
+	"net/http/httptest"
+	"path/filepath"
+	"testing"
+
+	"jianli/internal/config"
+	"jianli/internal/store"
+)
+
+func TestNewRouterRegistersCoreRoutes(t *testing.T) {
+	db, err := store.Open(filepath.Join(t.TempDir(), "resume.db"))
+	if err != nil {
+		t.Fatalf("Open() returned error: %v", err)
+	}
+	defer db.Close()
+
+	router := newRouter(config.Config{AuthKey: "resume-key"}, db)
+
+	for _, testCase := range []struct {
+		method string
+		path   string
+		codes  []int
+	}{
+		{method: http.MethodGet, path: "/api/resume", codes: []int{http.StatusOK}},
+		{method: http.MethodPost, path: "/api/auth/verify", codes: []int{http.StatusBadRequest, http.StatusUnauthorized, http.StatusOK}},
+		{method: http.MethodGet, path: "/api/visitors", codes: []int{http.StatusOK}},
+		{method: http.MethodGet, path: "/api/visitors/stats", codes: []int{http.StatusOK}},
+	} {
+		recorder := httptest.NewRecorder()
+		request := httptest.NewRequest(testCase.method, testCase.path, nil)
+		router.ServeHTTP(recorder, request)
+
+		matched := false
+		for _, code := range testCase.codes {
+			if recorder.Code == code {
+				matched = true
+				break
+			}
+		}
+
+		if !matched {
+			t.Fatalf("expected route %s %s to be registered, got status %d", testCase.method, testCase.path, recorder.Code)
+		}
+	}
+}

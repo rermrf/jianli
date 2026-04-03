@@ -1,9 +1,15 @@
-package main
+﻿package main
 
 import (
+	"database/sql"
 	"log"
 
+	"github.com/gin-gonic/gin"
+
 	"jianli/internal/config"
+	"jianli/internal/handler"
+	"jianli/internal/middleware"
+	"jianli/internal/store"
 )
 
 func main() {
@@ -12,5 +18,38 @@ func main() {
 		log.Fatal(err)
 	}
 
-	log.Printf("server bootstrap placeholder on :%s", cfg.Port)
+	db, err := store.Open(cfg.DBPath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	if err := newRouter(cfg, db).Run(":" + cfg.Port); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func newRouter(cfg config.Config, db *sql.DB) *gin.Engine {
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(middleware.CORS(cfg.FrontendOrigin))
+
+	resumeStore := store.NewResumeStore(db)
+	visitorStore := store.NewVisitorStore(db)
+
+	resumeHandler := handler.NewResumeHandler(resumeStore)
+	visitorHandler := handler.NewVisitorHandler(visitorStore)
+
+	router.POST("/api/auth/verify", handler.VerifyAuth(cfg.AuthKey))
+	router.GET("/api/resume", resumeHandler.Get)
+	router.GET("/api/visitors", visitorHandler.List)
+	router.GET("/api/visitors/stats", visitorHandler.Stats)
+	router.POST("/api/visitors", visitorHandler.Create)
+	router.PATCH("/api/visitors/:id", visitorHandler.UpdateDuration)
+
+	protected := router.Group("/api")
+	protected.Use(middleware.Auth(cfg.AuthKey))
+	protected.PUT("/resume", resumeHandler.Update)
+
+	return router
 }
