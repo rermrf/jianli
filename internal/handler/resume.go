@@ -1,6 +1,7 @@
 ﻿package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 
@@ -10,12 +11,17 @@ import (
 	"jianli/internal/store"
 )
 
-type ResumeHandler struct {
-	store *store.ResumeStore
+type PDFExporter interface {
+	ExportResume(ctx context.Context, resume json.RawMessage) ([]byte, error)
 }
 
-func NewResumeHandler(store *store.ResumeStore) *ResumeHandler {
-	return &ResumeHandler{store: store}
+type ResumeHandler struct {
+	exporter PDFExporter
+	store    *store.ResumeStore
+}
+
+func NewResumeHandler(store *store.ResumeStore, exporter PDFExporter) *ResumeHandler {
+	return &ResumeHandler{exporter: exporter, store: store}
 }
 
 func (h *ResumeHandler) Get(c *gin.Context) {
@@ -53,4 +59,22 @@ func (h *ResumeHandler) Update(c *gin.Context) {
 	}
 
 	httpapi.JSON(c, http.StatusOK, payload)
+}
+
+func (h *ResumeHandler) ExportPDF(c *gin.Context) {
+	resume, err := h.store.Get()
+	if err != nil {
+		httpapi.Error(c, http.StatusInternalServerError, 50000, "failed to load resume")
+		return
+	}
+
+	pdfBytes, err := h.exporter.ExportResume(c.Request.Context(), resume)
+	if err != nil {
+		httpapi.Error(c, http.StatusInternalServerError, 50000, "failed to export pdf")
+		return
+	}
+
+	c.Header("Content-Type", "application/pdf")
+	c.Header("Content-Disposition", "inline; filename=resume.pdf")
+	c.Data(http.StatusOK, "application/pdf", pdfBytes)
 }

@@ -1,16 +1,17 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/common/Button'
 import { SectionCard } from '../components/common/SectionCard'
 import { AppShell } from '../components/layout/AppShell'
-import { consumeRedirectPath, loginWithKey } from '../lib/auth'
+import { consumeRedirectPath, loginWithKey, verifyAuthKey } from '../lib/auth'
 
 export function LoginPage() {
   const navigate = useNavigate()
   const [keyValue, setKeyValue] = useState('')
   const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
 
-  function handleLogin() {
+  async function handleLogin() {
     const trimmedKey = keyValue.trim()
 
     if (!trimmedKey) {
@@ -18,9 +19,22 @@ export function LoginPage() {
       return
     }
 
-    loginWithKey(trimmedKey)
-    setError('')
-    navigate(consumeRedirectPath() ?? '/edit', { replace: true })
+    setSubmitting(true)
+    try {
+      const valid = await verifyAuthKey(trimmedKey)
+      if (!valid) {
+        setError('访问密钥无效')
+        return
+      }
+
+      loginWithKey(trimmedKey)
+      setError('')
+      navigate(consumeRedirectPath() ?? '/edit', { replace: true })
+    } catch {
+      setError('登录失败，请稍后重试')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -43,8 +57,8 @@ export function LoginPage() {
           />
           {error ? <p className="text-sm text-rose-500">{error}</p> : null}
         </div>
-        <Button className="w-full" onClick={handleLogin}>
-          验证并登录
+        <Button className="w-full" disabled={submitting} onClick={handleLogin}>
+          {submitting ? '验证中...' : '验证并登录'}
         </Button>
       </SectionCard>
     </AppShell>

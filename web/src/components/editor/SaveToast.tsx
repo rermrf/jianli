@@ -1,4 +1,4 @@
-interface SaveToastProps {
+﻿interface SaveToastProps {
   visible: boolean
 }
 

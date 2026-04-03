@@ -1,4 +1,4 @@
-import { formatDuration } from '../../lib/format'
+﻿import { formatDuration } from '../../lib/format'
 import type { VisitorStats } from '../../types/visitors'
 import { SectionCard } from '../common/SectionCard'
 

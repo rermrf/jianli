@@ -1,4 +1,4 @@
-import { useState } from 'react'
+﻿import { useState } from 'react'
 import { Button } from '../components/common/Button'
 import { SectionCard } from '../components/common/SectionCard'
 import {
@@ -55,7 +55,7 @@ function createEmptyAward(): Award {
 }
 
 export function EditPage() {
-  const { draft, saveDraft, setDraft } = useResumeDraft()
+  const { draft, loading, saveDraft, setDraft } = useResumeDraft()
   const [saved, setSaved] = useState(false)
 
   function updateProfileField<Field extends keyof typeof draft.profile>(
@@ -118,10 +118,19 @@ export function EditPage() {
     })
   }
 
-  function handleSave() {
-    saveDraft()
+  async function handleSave() {
+    await saveDraft()
     setSaved(true)
     window.setTimeout(() => setSaved(false), 1800)
+  }
+
+  if (loading) {
+    return (
+      <AppShell contentClassName="space-y-6">
+        <TopNav />
+        <SectionCard className="text-sm text-slate-500">加载中...</SectionCard>
+      </AppShell>
+    )
   }
 
   return (
@@ -135,7 +144,7 @@ export function EditPage() {
       <div className="hidden items-center justify-between gap-4 md:flex">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">编辑简历</h1>
-          <p className="mt-2 text-sm text-slate-500">本阶段保存到本地草稿，不请求后端接口。</p>
+          <p className="mt-2 text-sm text-slate-500">当前保存会调用后端接口并持久化到数据库。</p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="secondary">取消</Button>
@@ -224,9 +233,9 @@ export function EditPage() {
                     value={item.degree}
                   />
                   <FieldInput
-                    label="时间"
+                    label="开始时间"
                     onChange={(value) => updateEducation(index, { ...item, startDate: value })}
-                    value={`${item.startDate}${item.endDate ? ` - ${item.endDate}` : ''}`}
+                    value={item.startDate}
                   />
                 </div>
               </EditableListItem>

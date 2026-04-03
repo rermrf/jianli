@@ -9,6 +9,7 @@ import (
 	"jianli/internal/config"
 	"jianli/internal/handler"
 	"jianli/internal/middleware"
+	"jianli/internal/pdf"
 	"jianli/internal/store"
 )
 
@@ -41,20 +42,20 @@ func newRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 
 	resumeStore := store.NewResumeStore(db)
 	visitorStore := store.NewVisitorStore(db)
-
-	resumeHandler := handler.NewResumeHandler(resumeStore)
+	resumeHandler := handler.NewResumeHandler(resumeStore, pdf.NewExporter())
 	visitorHandler := handler.NewVisitorHandler(visitorStore)
 
 	router.POST("/api/auth/verify", handler.VerifyAuth(cfg.AuthKey))
 	router.GET("/api/resume", resumeHandler.Get)
-	router.GET("/api/visitors", visitorHandler.List)
-	router.GET("/api/visitors/stats", visitorHandler.Stats)
+	router.GET("/api/resume/pdf", resumeHandler.ExportPDF)
 	router.POST("/api/visitors", visitorHandler.Create)
 	router.PATCH("/api/visitors/:id", visitorHandler.UpdateDuration)
 
 	protected := router.Group("/api")
 	protected.Use(middleware.Auth(cfg.AuthKey))
 	protected.PUT("/resume", resumeHandler.Update)
+	protected.GET("/visitors", visitorHandler.List)
+	protected.GET("/visitors/stats", visitorHandler.Stats)
 
 	return router
 }

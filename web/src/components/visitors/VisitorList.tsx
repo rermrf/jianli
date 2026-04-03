@@ -1,4 +1,4 @@
-import type { VisitorRecord } from '../../types/visitors'
+﻿import type { VisitorRecord } from '../../types/visitors'
 import { SectionCard } from '../common/SectionCard'
 
 interface VisitorListProps {

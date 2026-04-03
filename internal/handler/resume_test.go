@@ -1,6 +1,7 @@
 ﻿package handler
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -13,6 +14,14 @@ import (
 	"jianli/internal/middleware"
 	"jianli/internal/store"
 )
+
+type fakePDFExporter struct {
+	content []byte
+}
+
+func (f fakePDFExporter) ExportResume(_ context.Context, _ json.RawMessage) ([]byte, error) {
+	return f.content, nil
+}
 
 func setupResumeTestRouter(t *testing.T) *gin.Engine {
 	t.Helper()
@@ -28,9 +37,10 @@ func setupResumeTestRouter(t *testing.T) *gin.Engine {
 	}
 	t.Cleanup(func() { _ = sqlDB.Close() })
 
-	resumeHandler := NewResumeHandler(store.NewResumeStore(db))
+	resumeHandler := NewResumeHandler(store.NewResumeStore(db), fakePDFExporter{content: []byte("%PDF-test")})
 	router := gin.New()
 	router.GET("/api/resume", resumeHandler.Get)
+	router.GET("/api/resume/pdf", resumeHandler.ExportPDF)
 	protected := router.Group("/api")
 	protected.Use(middleware.Auth("resume-key"))
 	protected.PUT("/resume", resumeHandler.Update)
@@ -90,5 +100,25 @@ func TestResumeHandlerUpdateRequiresAuthAndSavesData(t *testing.T) {
 	profile := payload.Data["profile"].(map[string]any)
 	if profile["name"] != "测试后端" {
 		t.Fatalf("expected updated profile name 测试后端, got %#v", profile["name"])
+	}
+}
+
+func TestResumeHandlerExportPDFReturnsPDFResponse(t *testing.T) {
+	router := setupResumeTestRouter(t)
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/resume/pdf", nil)
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200, got %d", recorder.Code)
+	}
+
+	if contentType := recorder.Header().Get("Content-Type"); contentType != "application/pdf" {
+		t.Fatalf("expected application/pdf content type, got %q", contentType)
+	}
+
+	if body := recorder.Body.String(); body != "%PDF-test" {
+		t.Fatalf("expected pdf payload, got %q", body)
 	}
 }

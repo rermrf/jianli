@@ -1,26 +1,23 @@
-import { defaultResume } from '../data/mockResume'
 import type { ResumeData } from '../types/resume'
+import { apiFetch } from './api'
+import { getAuthKey } from './auth'
 
-const RESUME_DRAFT_KEY = 'resume:draft'
-
-export function loadResumeDraft(): ResumeData {
-  const storedDraft = localStorage.getItem(RESUME_DRAFT_KEY)
-
-  if (!storedDraft) {
-    return defaultResume
-  }
-
-  try {
-    return JSON.parse(storedDraft) as ResumeData
-  } catch {
-    return defaultResume
-  }
+export async function loadResumeDraft(): Promise<ResumeData> {
+  return apiFetch<ResumeData>('/api/resume', {
+    method: 'GET',
+  })
 }
 
-export function saveResumeDraft(resume: ResumeData) {
-  localStorage.setItem(RESUME_DRAFT_KEY, JSON.stringify(resume))
+export async function saveResumeDraft(resume: ResumeData): Promise<ResumeData> {
+  return apiFetch<ResumeData>('/api/resume', {
+    body: JSON.stringify(resume),
+    headers: {
+      'X-Auth-Key': getAuthKey() ?? '',
+    },
+    method: 'PUT',
+  })
 }
 
 export function resetResumeDraft() {
-  localStorage.removeItem(RESUME_DRAFT_KEY)
+  return undefined
 }

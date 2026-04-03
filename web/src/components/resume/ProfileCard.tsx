@@ -1,4 +1,4 @@
-import type { ResumeProfile } from '../../types/resume'
+﻿import type { ResumeProfile } from '../../types/resume'
 import { SectionCard } from '../common/SectionCard'
 
 interface ProfileCardProps {

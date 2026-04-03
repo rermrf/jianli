@@ -1,15 +1,17 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   consumeRedirectPath,
   isAuthenticated,
   loginWithKey,
   logout,
   setRedirectPath,
+  verifyAuthKey,
 } from '../auth'
 
 describe('auth helpers', () => {
   afterEach(() => {
     sessionStorage.clear()
+    vi.restoreAllMocks()
   })
 
   it('marks the session as authenticated after login', () => {
@@ -33,5 +35,25 @@ describe('auth helpers', () => {
     logout()
 
     expect(isAuthenticated()).toBe(false)
+  })
+
+  it('verifies auth key against the backend API', async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValue(
+        new Response(JSON.stringify({ code: 0, data: { valid: true } }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+
+    await expect(verifyAuthKey('resume-key')).resolves.toBe(true)
+    expect(fetchSpy).toHaveBeenCalledWith(
+      '/api/auth/verify',
+      expect.objectContaining({
+        body: JSON.stringify({ key: 'resume-key' }),
+        method: 'POST',
+      }),
+    )
   })
 })

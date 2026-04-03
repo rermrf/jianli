@@ -1,4 +1,4 @@
-import type {
+﻿import type {
   VisitorRange,
   VisitorRecord,
   VisitorStats,
@@ -60,7 +60,7 @@ export const visitorRecordsByRange: Record<VisitorRange, VisitorRecord[]> = {
       browser: 'Chrome',
       os: 'Windows',
       visitTime: '今天 14:32',
-      durationSeconds: 82,
+      duration: 82,
     },
     {
       id: 2,
@@ -70,7 +70,7 @@ export const visitorRecordsByRange: Record<VisitorRange, VisitorRecord[]> = {
       browser: 'Safari',
       os: 'iOS',
       visitTime: '今天 11:05',
-      durationSeconds: 105,
+      duration: 105,
     },
     {
       id: 3,
@@ -80,7 +80,7 @@ export const visitorRecordsByRange: Record<VisitorRange, VisitorRecord[]> = {
       browser: 'Firefox',
       os: 'macOS',
       visitTime: '昨天 22:18',
-      durationSeconds: 78,
+      duration: 78,
     },
   ],
   '30d': [
@@ -92,7 +92,7 @@ export const visitorRecordsByRange: Record<VisitorRange, VisitorRecord[]> = {
       browser: 'Chrome',
       os: 'Windows',
       visitTime: '今天 14:32',
-      durationSeconds: 82,
+      duration: 82,
     },
     {
       id: 12,
@@ -102,7 +102,7 @@ export const visitorRecordsByRange: Record<VisitorRange, VisitorRecord[]> = {
       browser: 'Safari',
       os: 'iOS',
       visitTime: '今天 11:05',
-      durationSeconds: 105,
+      duration: 105,
     },
     {
       id: 13,
@@ -112,7 +112,7 @@ export const visitorRecordsByRange: Record<VisitorRange, VisitorRecord[]> = {
       browser: 'Firefox',
       os: 'macOS',
       visitTime: '昨天 22:18',
-      durationSeconds: 78,
+      duration: 78,
     },
     {
       id: 14,
@@ -122,7 +122,7 @@ export const visitorRecordsByRange: Record<VisitorRange, VisitorRecord[]> = {
       browser: 'Edge',
       os: 'Android',
       visitTime: '昨天 10:42',
-      durationSeconds: 152,
+      duration: 152,
     },
   ],
   all: [
@@ -134,7 +134,7 @@ export const visitorRecordsByRange: Record<VisitorRange, VisitorRecord[]> = {
       browser: 'Chrome',
       os: 'Windows',
       visitTime: '今天 14:32',
-      durationSeconds: 82,
+      duration: 82,
     },
     {
       id: 22,
@@ -144,7 +144,7 @@ export const visitorRecordsByRange: Record<VisitorRange, VisitorRecord[]> = {
       browser: 'Safari',
       os: 'iOS',
       visitTime: '今天 11:05',
-      durationSeconds: 105,
+      duration: 105,
     },
     {
       id: 23,
@@ -154,7 +154,7 @@ export const visitorRecordsByRange: Record<VisitorRange, VisitorRecord[]> = {
       browser: 'Firefox',
       os: 'macOS',
       visitTime: '昨天 22:18',
-      durationSeconds: 78,
+      duration: 78,
     },
     {
       id: 24,
@@ -164,7 +164,7 @@ export const visitorRecordsByRange: Record<VisitorRange, VisitorRecord[]> = {
       browser: 'Edge',
       os: 'Android',
       visitTime: '昨天 10:42',
-      durationSeconds: 152,
+      duration: 152,
     },
     {
       id: 25,
@@ -174,7 +174,7 @@ export const visitorRecordsByRange: Record<VisitorRange, VisitorRecord[]> = {
       browser: 'Chrome',
       os: 'Windows',
       visitTime: '前天 18:17',
-      durationSeconds: 194,
+      duration: 194,
     },
   ],
 }
