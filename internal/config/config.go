@@ -1,37 +1,42 @@
-package config
+﻿package config
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 )
 
 type Config struct {
-	AuthKey        string
-	DBPath         string
-	FrontendOrigin string
-	Port           string
+	AuthKey        string `json:"authKey"`
+	DBPath         string `json:"dbPath"`
+	FrontendOrigin string `json:"frontendOrigin"`
+	Port           string `json:"port"`
 }
 
 func Load() (Config, error) {
-	cfg := Config{
-		AuthKey:        os.Getenv("AUTH_KEY"),
-		DBPath:         getenvOrDefault("DB_PATH", "./data/resume.db"),
-		FrontendOrigin: getenvOrDefault("FRONTEND_ORIGIN", "http://localhost:5173"),
-		Port:           getenvOrDefault("PORT", "8080"),
+	content, err := os.ReadFile("config.json")
+	if err != nil {
+		return Config{}, fmt.Errorf("read config.json: %w", err)
+	}
+
+	var cfg Config
+	if err := json.Unmarshal(content, &cfg); err != nil {
+		return Config{}, fmt.Errorf("decode config.json: %w", err)
 	}
 
 	if cfg.AuthKey == "" {
-		return Config{}, errors.New("AUTH_KEY is required")
+		return Config{}, errors.New("authKey is required in config.json")
+	}
+	if cfg.Port == "" {
+		cfg.Port = "8080"
+	}
+	if cfg.DBPath == "" {
+		cfg.DBPath = "./data/resume.db"
+	}
+	if cfg.FrontendOrigin == "" {
+		cfg.FrontendOrigin = "http://localhost:5173"
 	}
 
 	return cfg, nil
-}
-
-func getenvOrDefault(key, fallback string) string {
-	value := os.Getenv(key)
-	if value == "" {
-		return fallback
-	}
-
-	return value
 }

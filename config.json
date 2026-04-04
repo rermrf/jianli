@@ -1,0 +1,6 @@
+﻿{
+  "authKey": "resume-key",
+  "port": "8080",
+  "dbPath": "./data/resume.db",
+  "frontendOrigin": "http://localhost:5173"
+}

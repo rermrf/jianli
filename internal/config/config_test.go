@@ -1,12 +1,35 @@
-package config
+﻿package config
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
-func TestLoadUsesDefaultsAndEnvOverrides(t *testing.T) {
-	t.Setenv("AUTH_KEY", "resume-key")
-	t.Setenv("PORT", "9090")
-	t.Setenv("DB_PATH", "./tmp/resume.db")
-	t.Setenv("FRONTEND_ORIGIN", "http://localhost:5173")
+func TestLoadUsesConfigFileValues(t *testing.T) {
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd() returned error: %v", err)
+	}
+
+	tempDir := t.TempDir()
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Chdir(%q) returned error: %v", tempDir, err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(originalDir)
+	})
+
+	configPath := filepath.Join(tempDir, "config.json")
+	configContent := `{
+  "authKey": "resume-key",
+  "port": "9090",
+  "dbPath": "./tmp/resume.db",
+  "frontendOrigin": "http://localhost:5173"
+}`
+	if err := os.WriteFile(configPath, []byte(configContent), 0o644); err != nil {
+		t.Fatalf("WriteFile(%q) returned error: %v", configPath, err)
+	}
 
 	cfg, err := Load()
 	if err != nil {
@@ -18,23 +41,58 @@ func TestLoadUsesDefaultsAndEnvOverrides(t *testing.T) {
 	}
 
 	if cfg.AuthKey != "resume-key" {
-		t.Fatalf("expected auth key to be loaded from env, got %q", cfg.AuthKey)
+		t.Fatalf("expected auth key from config file, got %q", cfg.AuthKey)
 	}
 
 	if cfg.DBPath != "./tmp/resume.db" {
-		t.Fatalf("expected db path override, got %q", cfg.DBPath)
+		t.Fatalf("expected db path from config file, got %q", cfg.DBPath)
 	}
 
 	if cfg.FrontendOrigin != "http://localhost:5173" {
-		t.Fatalf("expected frontend origin override, got %q", cfg.FrontendOrigin)
+		t.Fatalf("expected frontend origin from config file, got %q", cfg.FrontendOrigin)
 	}
 }
 
-func TestLoadRequiresAuthKey(t *testing.T) {
-	t.Setenv("AUTH_KEY", "")
+func TestLoadRequiresConfigFile(t *testing.T) {
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd() returned error: %v", err)
+	}
 
-	_, err := Load()
+	tempDir := t.TempDir()
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Chdir(%q) returned error: %v", tempDir, err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(originalDir)
+	})
+
+	_, err = Load()
 	if err == nil {
-		t.Fatal("expected error when AUTH_KEY is missing")
+		t.Fatal("expected error when config.json is missing")
+	}
+}
+
+func TestLoadRequiresAuthKeyInConfigFile(t *testing.T) {
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd() returned error: %v", err)
+	}
+
+	tempDir := t.TempDir()
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Chdir(%q) returned error: %v", tempDir, err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(originalDir)
+	})
+
+	if err := os.WriteFile("config.json", []byte(`{"port":"8080"}`), 0o644); err != nil {
+		t.Fatalf("WriteFile(config.json) returned error: %v", err)
+	}
+
+	_, err = Load()
+	if err == nil {
+		t.Fatal("expected error when authKey is missing")
 	}
 }
