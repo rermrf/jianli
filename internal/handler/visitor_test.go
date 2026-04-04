@@ -71,6 +71,43 @@ func TestVisitorHandlerCreateAndList(t *testing.T) {
 	}
 }
 
+func TestVisitorHandlerCreateDerivesMetadataFromRequest(t *testing.T) {
+	router := setupVisitorTestRouter(t)
+
+	request := httptest.NewRequest(http.MethodPost, "/api/visitors", strings.NewReader(`{"visitTime":"2026-04-03T10:00:00Z","duration":0}`))
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36 Edg/146.0.0.0")
+	request.RemoteAddr = "127.0.0.1:54321"
+	recorder := httptest.NewRecorder()
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusOK {
+		t.Fatalf("expected 200 from create, got %d", recorder.Code)
+	}
+
+	listRecorder := httptest.NewRecorder()
+	listRequest := httptest.NewRequest(http.MethodGet, "/api/visitors?days=7&page=1&limit=20", nil)
+	router.ServeHTTP(listRecorder, listRequest)
+
+	var payload struct {
+		Data []map[string]any `json:"data"`
+	}
+	if err := json.Unmarshal(listRecorder.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("expected list JSON, got error: %v", err)
+	}
+
+	record := payload.Data[0]
+	if record["city"] != "本地网络" {
+		t.Fatalf("expected derived city 本地网络, got %#v", record["city"])
+	}
+	if record["browser"] != "Edge" {
+		t.Fatalf("expected derived browser Edge, got %#v", record["browser"])
+	}
+	if record["device"] != "Desktop" {
+		t.Fatalf("expected derived device Desktop, got %#v", record["device"])
+	}
+}
+
 func TestVisitorHandlerStatsAndUpdateDuration(t *testing.T) {
 	router := setupVisitorTestRouter(t)
 

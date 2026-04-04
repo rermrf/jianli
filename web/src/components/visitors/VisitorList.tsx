@@ -1,4 +1,5 @@
 ﻿import type { VisitorRecord } from '../../types/visitors'
+import { formatVisitTime } from '../../lib/format'
 import { SectionCard } from '../common/SectionCard'
 
 interface VisitorListProps {
@@ -18,7 +19,7 @@ export function VisitorList({ records }: VisitorListProps) {
               {record.city} · {record.browser} · {record.device}
             </p>
             <p className="text-xs text-slate-400">
-              {record.visitTime} · IP {record.ip}
+              {formatVisitTime(record.visitTime)} · IP {record.ip}
             </p>
           </div>
         </SectionCard>

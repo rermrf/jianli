@@ -1,6 +1,7 @@
 ﻿import { useState } from 'react'
 import { Button } from '../components/common/Button'
 import { SectionCard } from '../components/common/SectionCard'
+import { AvatarUploader } from '../components/editor/AvatarUploader'
 import {
   EditableListItem,
   EditableListSection,
@@ -156,6 +157,18 @@ export function EditPage() {
         <div className="space-y-6">
           <SectionCard className="space-y-4">
             <h2 className="text-lg font-semibold text-slate-900">基本信息</h2>
+            <AvatarUploader
+              currentUrl={draft.profile.avatarUrl}
+              onUploaded={(avatarUrl) =>
+                setDraft({
+                  ...draft,
+                  profile: {
+                    ...draft.profile,
+                    avatarUrl,
+                  },
+                })
+              }
+            />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
               <FieldInput
                 label="姓名"
@@ -207,7 +220,7 @@ export function EditPage() {
           >
             {draft.education.map((item, index) => (
               <EditableListItem
-                key={`${item.school}-${index}`}
+                key={index}
                 onRemove={() =>
                   setDraft({
                     ...draft,
@@ -254,7 +267,7 @@ export function EditPage() {
           >
             {draft.awards.map((item, index) => (
               <EditableListItem
-                key={`${item.date}-${item.title}-${index}`}
+                key={index}
                 onRemove={() =>
                   setDraft({
                     ...draft,
@@ -293,7 +306,7 @@ export function EditPage() {
           >
             {draft.workExperience.map((item, index) => (
               <EditableListItem
-                key={`${item.company}-${item.role}-${index}`}
+                key={index}
                 onRemove={() =>
                   setDraft({
                     ...draft,
@@ -361,7 +374,7 @@ export function EditPage() {
           >
             {draft.projects.map((item, index) => (
               <EditableListItem
-                key={`${item.name}-${index}`}
+                key={index}
                 onRemove={() =>
                   setDraft({
                     ...draft,

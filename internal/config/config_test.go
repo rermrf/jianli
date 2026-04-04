@@ -96,3 +96,32 @@ func TestLoadRequiresAuthKeyInConfigFile(t *testing.T) {
 		t.Fatal("expected error when authKey is missing")
 	}
 }
+
+func TestLoadSupportsUTF8BOMConfigFile(t *testing.T) {
+	originalDir, err := os.Getwd()
+	if err != nil {
+		t.Fatalf("Getwd() returned error: %v", err)
+	}
+
+	tempDir := t.TempDir()
+	if err := os.Chdir(tempDir); err != nil {
+		t.Fatalf("Chdir(%q) returned error: %v", tempDir, err)
+	}
+	t.Cleanup(func() {
+		_ = os.Chdir(originalDir)
+	})
+
+	content := append([]byte{0xEF, 0xBB, 0xBF}, []byte(`{"authKey":"resume-key","port":"8080"}`)...)
+	if err := os.WriteFile("config.json", content, 0o644); err != nil {
+		t.Fatalf("WriteFile(config.json) returned error: %v", err)
+	}
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load() returned error for BOM config: %v", err)
+	}
+
+	if cfg.AuthKey != "resume-key" {
+		t.Fatalf("expected authKey from BOM config, got %q", cfg.AuthKey)
+	}
+}

@@ -8,12 +8,27 @@ export function PrintResume({ resume }: PrintResumeProps) {
   return (
     <article className="mx-auto max-w-[794px] space-y-8 rounded-none bg-white p-8 text-slate-900 print:max-w-none print:p-0">
       <header className="border-b border-slate-200 pb-6">
-        <h1 className="text-3xl font-semibold">打印版简历</h1>
-        <h2 className="mt-3 text-2xl font-semibold">{resume.profile.name}</h2>
-        <p className="mt-2 text-sm text-slate-500">{resume.profile.title}</p>
-        <p className="mt-3 text-sm text-slate-500">
-          {resume.profile.location} · {resume.profile.phone} · {resume.profile.email}
-        </p>
+        <div className="flex items-start gap-6">
+          {resume.profile.avatarUrl ? (
+            <img
+              alt={`${resume.profile.name}头像`}
+              className="h-20 w-20 rounded-full object-cover"
+              src={resume.profile.avatarUrl}
+            />
+          ) : (
+            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-slate-100 text-3xl text-slate-400">
+              👤
+            </div>
+          )}
+          <div>
+            <h1 className="text-3xl font-semibold">打印版简历</h1>
+            <h2 className="mt-3 text-2xl font-semibold">{resume.profile.name}</h2>
+            <p className="mt-2 text-sm text-slate-500">{resume.profile.title}</p>
+            <p className="mt-3 text-sm text-slate-500">
+              {resume.profile.location} · {resume.profile.phone} · {resume.profile.email}
+            </p>
+          </div>
+        </div>
       </header>
 
       <section className="space-y-3">

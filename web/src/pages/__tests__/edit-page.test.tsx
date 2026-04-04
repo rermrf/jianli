@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+﻿import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -14,6 +14,34 @@ function renderEditPage() {
   )
 }
 
+function mockResumeFetch() {
+  return vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+    const url = String(input)
+
+    if (url === '/api/resume' && (!init || init.method === 'GET')) {
+      return new Response(JSON.stringify({ code: 0, data: defaultResume }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    }
+
+    if (url === '/api/resume' && init?.method === 'PUT') {
+      return new Response(
+        JSON.stringify({ code: 0, data: JSON.parse(String(init.body)) }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      )
+    }
+
+    return new Response(JSON.stringify({ code: 0, data: defaultResume }), {
+      status: 200,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  })
+}
+
 describe('edit page', () => {
   afterEach(() => {
     sessionStorage.clear()
@@ -22,19 +50,7 @@ describe('edit page', () => {
 
   it('adds a new skill tag and removes an existing one', async () => {
     loginWithKey('resume-key')
-    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
-      if (String(input) === '/api/resume' && (!init || init.method === 'GET')) {
-        return new Response(JSON.stringify({ code: 0, data: defaultResume }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        })
-      }
-
-      return new Response(JSON.stringify({ code: 0, data: defaultResume }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      })
-    })
+    mockResumeFetch()
 
     const user = userEvent.setup()
     renderEditPage()
@@ -49,7 +65,22 @@ describe('edit page', () => {
     expect(screen.getByText('DDD')).toBeInTheDocument()
   })
 
-  it('saves edited resume data through the backend API', async () => {
+  it('keeps focus while typing in the award name field', async () => {
+    loginWithKey('resume-key')
+    mockResumeFetch()
+
+    const user = userEvent.setup()
+    renderEditPage()
+
+    const awardNameInput = (await screen.findAllByLabelText('奖项名称'))[0]
+    await user.click(awardNameInput)
+    await user.type(awardNameInput, 'A')
+
+    const currentAwardNameInput = screen.getAllByLabelText('奖项名称')[0]
+    expect(currentAwardNameInput).toHaveFocus()
+  })
+
+  it('uploads a cropped avatar and includes avatarUrl in resume save', async () => {
     loginWithKey('resume-key')
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(
       async (input, init) => {
@@ -62,12 +93,22 @@ describe('edit page', () => {
           })
         }
 
+        if (url === '/api/upload/avatar' && init?.method === 'POST') {
+          return new Response(
+            JSON.stringify({ code: 0, data: { url: '/uploads/avatars/avatar-1.png' } }),
+            {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
+            },
+          )
+        }
+
         if (url === '/api/resume' && init?.method === 'PUT') {
           return new Response(
             JSON.stringify({ code: 0, data: JSON.parse(String(init.body)) }),
             {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' },
+              status: 200,
+              headers: { 'Content-Type': 'application/json' },
             },
           )
         }
@@ -78,6 +119,47 @@ describe('edit page', () => {
         })
       },
     )
+    vi.stubGlobal('URL', {
+      ...URL,
+      createObjectURL: vi.fn(() => 'blob:avatar-preview'),
+      revokeObjectURL: vi.fn(),
+    })
+
+    const user = userEvent.setup()
+    renderEditPage()
+
+    const file = new File([new Uint8Array([1, 2, 3])], 'avatar.png', {
+      type: 'image/png',
+    })
+
+    await user.upload(await screen.findByLabelText('选择头像'), file)
+    expect(await screen.findByAltText('头像预览')).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '确认上传头像' }))
+    await waitFor(() => expect(fetchSpy.mock.calls.length).toBeGreaterThan(1))
+    await user.click(screen.getAllByRole('button', { name: '保存' })[0])
+
+    await waitFor(() =>
+      expect(fetchSpy).toHaveBeenCalledWith(
+        '/api/upload/avatar',
+        expect.objectContaining({ method: 'POST' }),
+      ),
+    )
+
+    await waitFor(() =>
+      expect(fetchSpy).toHaveBeenCalledWith(
+        '/api/resume',
+        expect.objectContaining({
+          body: expect.stringContaining('/uploads/avatars/avatar-1.png'),
+          method: 'PUT',
+        }),
+      ),
+    )
+  })
+
+  it('saves edited resume data through the backend API', async () => {
+    loginWithKey('resume-key')
+    const fetchSpy = mockResumeFetch()
 
     const user = userEvent.setup()
     renderEditPage()

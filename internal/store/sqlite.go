@@ -1,6 +1,7 @@
 ﻿package store
 
 import (
+	"os"
 	"path/filepath"
 
 	"github.com/glebarez/sqlite"
@@ -11,6 +12,13 @@ import (
 
 func Open(path string) (*gorm.DB, error) {
 	dsn := filepath.Clean(path)
+	parentDir := filepath.Dir(dsn)
+	if parentDir != "." {
+		if err := os.MkdirAll(parentDir, 0o755); err != nil {
+			return nil, err
+		}
+	}
+
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return nil, err

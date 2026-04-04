@@ -1,8 +1,10 @@
 ﻿package handler
 
 import (
+	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -17,11 +19,6 @@ type VisitorHandler struct {
 }
 
 type createVisitorRequest struct {
-	IP        string    `json:"ip"`
-	City      string    `json:"city"`
-	Device    string    `json:"device"`
-	Browser   string    `json:"browser"`
-	OS        string    `json:"os"`
 	VisitTime time.Time `json:"visitTime"`
 	Duration  int       `json:"duration"`
 }
@@ -41,17 +38,23 @@ func (h *VisitorHandler) Create(c *gin.Context) {
 		return
 	}
 
-	if request.VisitTime.IsZero() {
-		request.VisitTime = time.Now().UTC()
+	visitTime := request.VisitTime
+	if visitTime.IsZero() {
+		visitTime = time.Now().UTC()
 	}
 
+	userAgent := c.GetHeader("User-Agent")
+	browser, osName, device := deriveUserAgentMetadata(userAgent)
+	ip := c.ClientIP()
+	city := deriveCity(ip)
+
 	id, err := h.store.RecordVisit(model.VisitorRecord{
-		IP:        request.IP,
-		City:      request.City,
-		Device:    request.Device,
-		Browser:   request.Browser,
-		OS:        request.OS,
-		VisitTime: request.VisitTime,
+		IP:        ip,
+		City:      city,
+		Device:    device,
+		Browser:   browser,
+		OS:        osName,
+		VisitTime: visitTime,
 		Duration:  request.Duration,
 	})
 	if err != nil {
@@ -121,4 +124,58 @@ func queryInt(c *gin.Context, key string, fallback int) int {
 	}
 
 	return parsed
+}
+
+func deriveCity(ip string) string {
+	parsedIP := net.ParseIP(ip)
+	if parsedIP == nil {
+		return "未知"
+	}
+	if parsedIP.IsLoopback() || parsedIP.IsPrivate() {
+		return "本地网络"
+	}
+	return "未知"
+}
+
+func deriveUserAgentMetadata(userAgent string) (browser string, osName string, device string) {
+	lowerUA := strings.ToLower(userAgent)
+
+	switch {
+	case strings.Contains(lowerUA, "edg/"):
+		browser = "Edge"
+	case strings.Contains(lowerUA, "chrome/"):
+		browser = "Chrome"
+	case strings.Contains(lowerUA, "firefox/"):
+		browser = "Firefox"
+	case strings.Contains(lowerUA, "safari/") && !strings.Contains(lowerUA, "chrome/"):
+		browser = "Safari"
+	default:
+		browser = "Unknown"
+	}
+
+	switch {
+	case strings.Contains(lowerUA, "windows"):
+		osName = "Windows"
+	case strings.Contains(lowerUA, "android"):
+		osName = "Android"
+	case strings.Contains(lowerUA, "iphone") || strings.Contains(lowerUA, "ipad") || strings.Contains(lowerUA, "ios"):
+		osName = "iOS"
+	case strings.Contains(lowerUA, "mac os x") || strings.Contains(lowerUA, "macintosh"):
+		osName = "macOS"
+	case strings.Contains(lowerUA, "linux"):
+		osName = "Linux"
+	default:
+		osName = "Unknown"
+	}
+
+	switch {
+	case strings.Contains(lowerUA, "iphone"), strings.Contains(lowerUA, "android") && strings.Contains(lowerUA, "mobile"):
+		device = "Mobile"
+	case strings.Contains(lowerUA, "ipad"), strings.Contains(lowerUA, "tablet"):
+		device = "Tablet"
+	default:
+		device = "Desktop"
+	}
+
+	return browser, osName, device
 }

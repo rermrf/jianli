@@ -25,3 +25,22 @@ func TestOpenInitializesSchema(t *testing.T) {
 		}
 	}
 }
+
+func TestOpenCreatesParentDirectoryForDatabaseFile(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "data", "resume.db")
+
+	db, err := Open(dbPath)
+	if err != nil {
+		t.Fatalf("Open() returned error: %v", err)
+	}
+
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatalf("db.DB() returned error: %v", err)
+	}
+	defer sqlDB.Close()
+
+	if !db.Migrator().HasTable("resume") {
+		t.Fatal("expected resume table to exist after creating parent directory")
+	}
+}

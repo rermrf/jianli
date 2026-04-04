@@ -1,4 +1,5 @@
-export interface ResumeProfile {
+﻿export interface ResumeProfile {
+  avatarUrl?: string
   name: string
   title: string
   age: number

@@ -1,4 +1,4 @@
-﻿import { formatDuration, maskIp } from '../../lib/format'
+﻿import { formatDuration, formatVisitTime, maskIp } from '../../lib/format'
 import type { VisitorRecord } from '../../types/visitors'
 import { SectionCard } from '../common/SectionCard'
 
@@ -29,7 +29,7 @@ export function VisitorTable({ records }: VisitorTableProps) {
                 <td className="py-3">
                   {record.device} · {record.browser}
                 </td>
-                <td className="py-3">{record.visitTime}</td>
+                <td className="py-3">{formatVisitTime(record.visitTime)}</td>
                 <td className="py-3">{formatDuration(record.duration)}</td>
               </tr>
             ))}
