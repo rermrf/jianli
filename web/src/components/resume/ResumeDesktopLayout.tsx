@@ -1,4 +1,4 @@
-import type { ResumeData } from '../../types/resume'
+﻿import type { ResumeData } from '../../types/resume'
 import { ProfileCard } from './ProfileCard'
 import { SkillSection } from './SkillSection'
 import { TimelineSection } from './TimelineSection'

@@ -1,7 +1,8 @@
-import type { ResumeData } from '../types/resume'
+﻿import type { ResumeData } from '../types/resume'
 
 export const defaultResume: ResumeData = {
   profile: {
+    avatarUrl: '',
     name: '温庆京',
     title: 'Golang 后端工程师',
     age: 25,

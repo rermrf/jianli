@@ -1,8 +1,14 @@
+import { apiFetch } from './api'
+
 const AUTH_KEY_STORAGE = 'auth:key'
 const REDIRECT_PATH_STORAGE = 'auth:redirect-path'
 
 export function isAuthenticated() {
   return Boolean(sessionStorage.getItem(AUTH_KEY_STORAGE))
+}
+
+export function getAuthKey() {
+  return sessionStorage.getItem(AUTH_KEY_STORAGE)
 }
 
 export function loginWithKey(key: string) {
@@ -27,4 +33,13 @@ export function consumeRedirectPath() {
   sessionStorage.removeItem(REDIRECT_PATH_STORAGE)
 
   return redirectPath
+}
+
+export async function verifyAuthKey(key: string) {
+  const response = await apiFetch<{ valid: boolean }>('/api/auth/verify', {
+    body: JSON.stringify({ key }),
+    method: 'POST',
+  })
+
+  return response.valid
 }

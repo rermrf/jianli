@@ -1,4 +1,4 @@
-import type { ResumeData } from '../../types/resume'
+﻿import type { ResumeData } from '../../types/resume'
 import { ProfileCard } from './ProfileCard'
 import { SkillSection } from './SkillSection'
 import { TimelineSection } from './TimelineSection'
@@ -32,7 +32,7 @@ export function ResumeMobileLayout({ resume }: ResumeMobileLayoutProps) {
         items={resume.education.map((item) => ({
           title: `${item.school} · ${item.major}`,
           meta: `${item.startDate} - ${item.endDate}`,
-          bullets: [`${item.degree}`],
+          bullets: [item.degree],
         }))}
         title="教育经历"
       />

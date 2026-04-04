@@ -1,4 +1,4 @@
-import { SectionCard } from '../common/SectionCard'
+﻿import { SectionCard } from '../common/SectionCard'
 
 interface TimelineItem {
   bullets?: string[]

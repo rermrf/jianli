@@ -20,7 +20,7 @@ export interface VisitorRecord {
   browser: string
   os: string
   visitTime: string
-  durationSeconds: number
+  duration: number
 }
 
 export type VisitorTrendByRange = Record<VisitorRange, VisitorTrendPoint[]>
