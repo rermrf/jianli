@@ -25,12 +25,21 @@ func TestResumeStoreSeedsOnFirstRead(t *testing.T) {
 
 	var payload map[string]any
 	if err := json.Unmarshal(resume, &payload); err != nil {
-		t.Fatalf("expected seeded resume JSON, got error: %v", err)
+		t.Fatalf("expected empty resume JSON, got error: %v", err)
 	}
 
 	profile, ok := payload["profile"].(map[string]any)
-	if !ok || profile["name"] != "温庆京" {
-		t.Fatalf("expected seeded profile name 温庆京, got %#v", payload["profile"])
+	if !ok || profile["name"] != "" {
+		t.Fatalf("expected empty profile name, got %#v", payload["profile"])
+	}
+
+	var count int64
+	if err := db.Raw("SELECT COUNT(*) FROM resume").Scan(&count).Error; err != nil {
+		t.Fatalf("raw count query returned error: %v", err)
+	}
+
+	if count != 0 {
+		t.Fatalf("expected Get() on empty db not to persist a default resume, got %d stored rows", count)
 	}
 }
 

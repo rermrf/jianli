@@ -48,7 +48,7 @@ func setupResumeTestRouter(t *testing.T) *gin.Engine {
 	return router
 }
 
-func TestResumeHandlerGetReturnsSeededResume(t *testing.T) {
+func TestResumeHandlerGetReturnsEmptyResumeForNewDatabase(t *testing.T) {
 	router := setupResumeTestRouter(t)
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/api/resume", nil)
@@ -67,8 +67,8 @@ func TestResumeHandlerGetReturnsSeededResume(t *testing.T) {
 	}
 
 	profile := payload.Data["profile"].(map[string]any)
-	if profile["name"] != "温庆京" {
-		t.Fatalf("expected seeded profile name 温庆京, got %#v", profile["name"])
+	if profile["name"] != "" {
+		t.Fatalf("expected empty profile name, got %#v", profile["name"])
 	}
 }
 
