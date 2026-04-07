@@ -44,7 +44,7 @@ func newRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 	resumeStore := store.NewResumeStore(db)
 	draftStore := store.NewResumeDraftStore(db, resumeStore)
 	visitorStore := store.NewVisitorStore(db)
-	resumeHandler := handler.NewResumeHandler(resumeStore, pdf.NewExporter())
+	resumeHandler := handler.NewResumeHandler(resumeStore, pdf.NewExporter(cfg.BrowserPath))
 	draftHandler := handler.NewResumeDraftHandler(draftStore)
 	visitorHandler := handler.NewVisitorHandler(visitorStore)
 	uploadHandler := handler.NewUploadHandler(filepath.Clean("./data/uploads/avatars"))

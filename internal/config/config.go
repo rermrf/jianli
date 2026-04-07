@@ -10,6 +10,7 @@ import (
 
 type Config struct {
 	AuthKey        string `json:"authKey"`
+	BrowserPath    string `json:"browserPath"`
 	DBPath         string `json:"dbPath"`
 	FrontendOrigin string `json:"frontendOrigin"`
 	Port           string `json:"port"`
