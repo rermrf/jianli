@@ -172,6 +172,30 @@ describe("routing smoke test", () => {
     expect(avatars[0]).toHaveAttribute("src", "/uploads/avatars/avatar-1.png");
   });
 
+  it("renders reordered projects in the same order as the saved array", async () => {
+    mockAppFetch({
+      ...defaultResume,
+      projects: [
+        {
+          ...defaultResume.projects[1],
+          name: "项目 B",
+        },
+        {
+          ...defaultResume.projects[0],
+          name: "项目 A",
+        },
+      ],
+    });
+    renderAtPath("/");
+
+    const projectBNodes = await screen.findAllByText("项目 B");
+    const projectANodes = await screen.findAllByText("项目 A");
+    expect(
+      projectBNodes[0].compareDocumentPosition(projectANodes[0]) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it("navigates from the resume export action to the print page", async () => {
     const user = userEvent.setup();
     mockAppFetch({

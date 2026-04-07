@@ -58,6 +58,23 @@ function createEmptyAward(): Award {
   };
 }
 
+function moveArrayItem<T>(items: T[], fromIndex: number, toIndex: number) {
+  if (
+    fromIndex < 0 ||
+    toIndex < 0 ||
+    fromIndex >= items.length ||
+    toIndex >= items.length ||
+    fromIndex === toIndex
+  ) {
+    return items;
+  }
+
+  const nextItems = [...items];
+  const [item] = nextItems.splice(fromIndex, 1);
+  nextItems.splice(toIndex, 0, item);
+  return nextItems;
+}
+
 export function EditPage() {
   const { draft, loading, saveDraft, setDraft } = useResumeDraft();
   const [draftDialogOpen, setDraftDialogOpen] = useState(false);
@@ -268,6 +285,46 @@ export function EditPage() {
           >
             {draft.education.map((item, index) => (
               <EditableListItem
+                actions={
+                  <>
+                    <Button
+                      aria-label={`上移 教育经历 ${index + 1}`}
+                      disabled={index === 0}
+                      onClick={() =>
+                        setDraft({
+                          ...draft,
+                          education: moveArrayItem(
+                            draft.education,
+                            index,
+                            index - 1,
+                          ),
+                        })
+                      }
+                      type="button"
+                      variant="ghost"
+                    >
+                      上移
+                    </Button>
+                    <Button
+                      aria-label={`下移 教育经历 ${index + 1}`}
+                      disabled={index === draft.education.length - 1}
+                      onClick={() =>
+                        setDraft({
+                          ...draft,
+                          education: moveArrayItem(
+                            draft.education,
+                            index,
+                            index + 1,
+                          ),
+                        })
+                      }
+                      type="button"
+                      variant="ghost"
+                    >
+                      下移
+                    </Button>
+                  </>
+                }
                 key={index}
                 onRemove={() =>
                   setDraft({
@@ -373,6 +430,46 @@ export function EditPage() {
           >
             {draft.workExperience.map((item, index) => (
               <EditableListItem
+                actions={
+                  <>
+                    <Button
+                      aria-label={`上移 工作经历 ${index + 1}`}
+                      disabled={index === 0}
+                      onClick={() =>
+                        setDraft({
+                          ...draft,
+                          workExperience: moveArrayItem(
+                            draft.workExperience,
+                            index,
+                            index - 1,
+                          ),
+                        })
+                      }
+                      type="button"
+                      variant="ghost"
+                    >
+                      上移
+                    </Button>
+                    <Button
+                      aria-label={`下移 工作经历 ${index + 1}`}
+                      disabled={index === draft.workExperience.length - 1}
+                      onClick={() =>
+                        setDraft({
+                          ...draft,
+                          workExperience: moveArrayItem(
+                            draft.workExperience,
+                            index,
+                            index + 1,
+                          ),
+                        })
+                      }
+                      type="button"
+                      variant="ghost"
+                    >
+                      下移
+                    </Button>
+                  </>
+                }
                 key={index}
                 onRemove={() =>
                   setDraft({
@@ -441,6 +538,46 @@ export function EditPage() {
           >
             {draft.projects.map((item, index) => (
               <EditableListItem
+                actions={
+                  <>
+                    <Button
+                      aria-label={`上移 项目经历 ${index + 1}`}
+                      disabled={index === 0}
+                      onClick={() =>
+                        setDraft({
+                          ...draft,
+                          projects: moveArrayItem(
+                            draft.projects,
+                            index,
+                            index - 1,
+                          ),
+                        })
+                      }
+                      type="button"
+                      variant="ghost"
+                    >
+                      上移
+                    </Button>
+                    <Button
+                      aria-label={`下移 项目经历 ${index + 1}`}
+                      disabled={index === draft.projects.length - 1}
+                      onClick={() =>
+                        setDraft({
+                          ...draft,
+                          projects: moveArrayItem(
+                            draft.projects,
+                            index,
+                            index + 1,
+                          ),
+                        })
+                      }
+                      type="button"
+                      variant="ghost"
+                    >
+                      下移
+                    </Button>
+                  </>
+                }
                 key={index}
                 onRemove={() =>
                   setDraft({
