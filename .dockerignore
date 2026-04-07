@@ -1,0 +1,15 @@
+﻿.git
+.gitignore
+.worktrees
+.merge-temp
+.merge-temp-stage
+.vscode
+.idea
+bin
+data
+web/node_modules
+web/dist
+coverage
+*.db
+*.log
+Dockerfile.*

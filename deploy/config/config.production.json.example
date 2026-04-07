@@ -1,0 +1,7 @@
+﻿{
+  "authKey": "replace-with-strong-secret",
+  "browserPath": "/usr/bin/chromium",
+  "port": "8080",
+  "dbPath": "/app/data/resume.db",
+  "frontendOrigin": "https://resume.example.com"
+}

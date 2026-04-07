@@ -1,0 +1,51 @@
+﻿name: jianli
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: app
+    image: jianli-app:local
+    restart: unless-stopped
+    volumes:
+      - ${APP_CONFIG_PATH}:/app/config.json:ro
+      - ${APP_DATA_DIR}:/app/data
+    expose:
+      - '8080'
+    networks:
+      - jianli
+
+  nginx:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: nginx
+    image: jianli-nginx:local
+    depends_on:
+      - app
+    ports:
+      - '${APP_HTTP_PORT:-80}:80'
+    restart: unless-stopped
+    networks:
+      - jianli
+
+  jenkins:
+    build:
+      context: ./jenkins
+      dockerfile: Dockerfile
+    image: jianli-jenkins:local
+    user: root
+    restart: unless-stopped
+    ports:
+      - '${JENKINS_HTTP_PORT:-8081}:8080'
+    volumes:
+      - ${JENKINS_HOME_DIR}:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ${DEPLOY_BASE_DIR}:/srv/jianli
+    networks:
+      - jianli
+
+networks:
+  jianli:
+    driver: bridge
