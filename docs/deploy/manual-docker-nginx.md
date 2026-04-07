@@ -1,4 +1,4 @@
-# Docker Manual Deployment Guide
+﻿# Docker Manual Deployment Guide
 
 ## 1. Server prerequisites
 
@@ -15,57 +15,75 @@ This deployment assumes you already have a long-running Nginx container that own
 Create:
 
 ```bash
-sudo mkdir -p /srv/jianli/app-src /srv/jianli/config /srv/jianli/data
-sudo chown -R $USER:$USER /srv/jianli
+mkdir -p /root/wen/go/jianli/data/uploads/avatars
 ```
 
-These are used for:
+This deployment now uses files directly from the project directory:
 
-- `/srv/jianli/app-src` -> checked-out project source
-- `/srv/jianli/config` -> production config file
-- `/srv/jianli/data` -> SQLite DB and uploads
+- `/root/wen/go/jianli/config.json`
+- `/root/wen/go/jianli/data`
 
-## 3. Production config
+## 3. Project config
 
-Copy the example files:
+Edit the project root `config.json` directly.
 
-```bash
-cp deploy/config/config.production.json.example /srv/jianli/config/config.production.json
-cp deploy/env/app.env.example /srv/jianli/deploy.env
+Recommended production content:
+
+```json
+{
+  "browserPath": "/usr/bin/chromium",
+  "port": "8088",
+  "dbPath": "./data/resume.db",
+  "frontendOrigin": "https://wenemoji.com"
+}
 ```
 
-Then edit them.
+Notes:
+- do not add `authKey` into `config.json`
+- `AUTH_KEY` is environment-only
+- keep `port` as `8088`
 
-`/srv/jianli/config/config.production.json`
-- keep `browserPath` as a Linux browser path such as `/usr/bin/chromium`
-- keep `frontendOrigin` as `https://wenemoji.com`
-- set `port` to `8088`
-- do not add `authKey` here
+## 4. Environment variables
 
-`/srv/jianli/deploy.env`
-- set `AUTH_KEY` to a strong secret
-- keep `APP_BIND=127.0.0.1:8088:8088` so the app is reachable only from the host and your existing Nginx container
-
-## 4. First deployment
+Create a local env file if you want:
 
 ```bash
-cd /srv/jianli
-git clone <your-repo-url> app-src
-cd app-src
-git checkout master
-
-docker compose --env-file /srv/jianli/deploy.env -f deploy/docker-compose.yml up -d --build app
+cp deploy/env/app.env.example .env
 ```
 
-## 5. Routine deployment
+Then set at least:
+
+```env
+AUTH_KEY=replace-with-strong-secret
+APP_BIND=127.0.0.1:8088:8088
+APP_HEALTHCHECK_URL=http://127.0.0.1:8088/api/resume
+```
+
+If you do not want a `.env` file, you can export `AUTH_KEY` inline when running Docker Compose.
+
+## 5. First deployment
 
 ```bash
-cd /srv/jianli/app-src
+cd /root/wen/go/jianli
+docker compose --env-file .env -f deploy/docker-compose.yml up -d --build app
+```
+
+Or without `.env`:
+
+```bash
+cd /root/wen/go/jianli
+AUTH_KEY='replace-with-strong-secret' docker compose -f deploy/docker-compose.yml up -d --build app
+```
+
+## 6. Routine deployment
+
+```bash
+cd /root/wen/go/jianli
 git pull
-docker compose --env-file /srv/jianli/deploy.env -f deploy/docker-compose.yml up -d --build app
+docker compose --env-file .env -f deploy/docker-compose.yml up -d --build app
 ```
 
-## 6. Health check
+## 7. Health check
 
 ```bash
 APP_HEALTHCHECK_URL=http://127.0.0.1:8088/api/resume bash deploy/scripts/healthcheck.sh
@@ -73,11 +91,11 @@ APP_HEALTHCHECK_URL=http://127.0.0.1:8088/api/resume bash deploy/scripts/healthc
 
 Expected: exit code `0`.
 
-## 7. Existing Nginx container integration
+## 8. Existing Nginx container integration
 
 Your existing Nginx container should reverse-proxy `wenemoji.com` to the host-local app port `127.0.0.1:8088`.
 
-If that Nginx container can access the host network, add a server block similar to:
+If that Nginx container can access the host network, add a server block like:
 
 ```nginx
 server {
@@ -113,12 +131,7 @@ server {
 }
 ```
 
-If `host.docker.internal` is unavailable in your Linux Docker setup, use one of:
-- the Docker bridge gateway IP
-- a shared custom network between your existing Nginx container and the app container
-- host networking rules that fit your server layout
-
-## 8. Validation checklist
+## 9. Validation checklist
 
 After deployment, verify:
 
@@ -129,19 +142,19 @@ After deployment, verify:
 - `/uploads/...` assets load
 - PDF export works
 
-## 9. Manual rollback
+## 10. Manual rollback
 
 Rollback is manual:
 
 ```bash
-cd /srv/jianli/app-src
+cd /root/wen/go/jianli
 # restore a known-good commit or branch
 
-docker compose --env-file /srv/jianli/deploy.env -f deploy/docker-compose.yml up -d --build app
+docker compose --env-file .env -f deploy/docker-compose.yml up -d --build app
 ```
 
-## 10. Notes
+## 11. Notes
 
 - This repo no longer manages Jenkins or a project-internal Nginx container.
-- The backend now requires `AUTH_KEY` from environment and will not start if that variable is missing.
+- The backend requires `AUTH_KEY` from environment and will not start if it is missing.
 - PDF export depends on Chromium existing in the app image and `browserPath` matching that path.
