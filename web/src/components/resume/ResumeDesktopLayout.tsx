@@ -11,12 +11,11 @@ export function ResumeDesktopLayout({ resume }: ResumeDesktopLayoutProps) {
   return (
     <div className="hidden gap-6 md:grid md:grid-cols-[320px_minmax(0,1fr)] xl:grid-cols-[360px_minmax(0,1fr)]">
       <aside className="space-y-6">
-        <ProfileCard profile={resume.profile} />
+        <ProfileCard desiredCities={resume.jobIntention.cities} profile={resume.profile} />
         <SkillSection skills={resume.skills} />
         <TimelineSection
           items={resume.education.map((item) => ({
             title: item.school,
-            meta: `${item.startDate} - ${item.endDate}`,
             bullets: [`${item.major} · ${item.degree}`],
           }))}
           title="教育经历"

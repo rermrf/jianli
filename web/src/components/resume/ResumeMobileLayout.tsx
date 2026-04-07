@@ -10,7 +10,7 @@ interface ResumeMobileLayoutProps {
 export function ResumeMobileLayout({ resume }: ResumeMobileLayoutProps) {
   return (
     <div className="space-y-4 md:hidden">
-      <ProfileCard profile={resume.profile} />
+      <ProfileCard desiredCities={resume.jobIntention.cities} profile={resume.profile} />
       <SkillSection skills={resume.skills} />
       <TimelineSection
         items={resume.workExperience.map((item) => ({
@@ -31,7 +31,6 @@ export function ResumeMobileLayout({ resume }: ResumeMobileLayoutProps) {
       <TimelineSection
         items={resume.education.map((item) => ({
           title: `${item.school} · ${item.major}`,
-          meta: `${item.startDate} - ${item.endDate}`,
           bullets: [item.degree],
         }))}
         title="教育经历"

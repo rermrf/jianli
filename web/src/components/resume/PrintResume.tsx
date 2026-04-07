@@ -25,8 +25,13 @@ export function PrintResume({ resume }: PrintResumeProps) {
             <h2 className="mt-3 text-2xl font-semibold">{resume.profile.name}</h2>
             <p className="mt-2 text-sm text-slate-500">{resume.profile.title}</p>
             <p className="mt-3 text-sm text-slate-500">
-              {resume.profile.location} · {resume.profile.phone} · {resume.profile.email}
+              {`所在地：${resume.profile.location}`} · {`手机号：${resume.profile.phone}`} · {`邮箱：${resume.profile.email}`}
             </p>
+            {resume.jobIntention.cities.length > 0 ? (
+              <p className="mt-2 text-sm text-slate-500">
+                {`意向城市：${resume.jobIntention.cities.join(' / ')}`}
+              </p>
+            ) : null}
           </div>
         </div>
       </header>

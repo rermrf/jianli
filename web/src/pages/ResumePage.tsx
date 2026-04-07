@@ -21,13 +21,22 @@ export function ResumePage() {
     let active = true
 
     async function trackVisit() {
-      const visitorID = await recordVisit()
-      if (!active) {
-        return
-      }
+      try {
+        const visitorID = await recordVisit()
+        if (!active) {
+          return
+        }
 
-      visitIDRef.current = visitorID
-      visitStartRef.current = Date.now()
+        visitIDRef.current = visitorID
+        visitStartRef.current = Date.now()
+      } catch {
+        if (!active) {
+          return
+        }
+
+        visitIDRef.current = null
+        visitStartRef.current = null
+      }
     }
 
     function handlePageHide() {

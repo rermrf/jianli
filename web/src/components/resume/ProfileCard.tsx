@@ -4,6 +4,7 @@ import type { ResumeProfile } from '../../types/resume'
 import { SectionCard } from '../common/SectionCard'
 
 interface ProfileCardProps {
+  desiredCities?: string[]
   profile: ResumeProfile
 }
 
@@ -14,7 +15,7 @@ const baseFacts = (profile: ResumeProfile) => [
   profile.experience,
 ]
 
-export function ProfileCard({ profile }: ProfileCardProps) {
+export function ProfileCard({ desiredCities = [], profile }: ProfileCardProps) {
   const navigate = useNavigate()
   const clickTimestampsRef = useRef<number[]>([])
 
@@ -64,9 +65,12 @@ export function ProfileCard({ profile }: ProfileCardProps) {
         ))}
       </div>
       <div className="space-y-2 text-sm text-slate-500">
-        <p>{profile.location}</p>
-        <p>{profile.phone}</p>
-        <p>{profile.email}</p>
+        <p>{`所在地：${profile.location}`}</p>
+        {desiredCities.length > 0 ? (
+          <p>{`意向城市：${desiredCities.join(' / ')}`}</p>
+        ) : null}
+        <p>{`手机号：${profile.phone}`}</p>
+        <p>{`邮箱：${profile.email}`}</p>
       </div>
     </SectionCard>
   )

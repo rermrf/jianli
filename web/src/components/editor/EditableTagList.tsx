@@ -3,14 +3,20 @@ import { Button } from '../common/Button'
 import { Tag } from '../common/Tag'
 
 interface EditableTagListProps {
+  addButtonLabel?: string
+  itemLabelPrefix?: string
   onAdd: (skill: string) => void
   onRemove: (skill: string) => void
+  placeholder?: string
   skills: string[]
 }
 
 export function EditableTagList({
+  addButtonLabel = '添加技能',
+  itemLabelPrefix = '删除技能',
   onAdd,
   onRemove,
+  placeholder = '添加技能',
   skills,
 }: EditableTagListProps) {
   const [nextSkill, setNextSkill] = useState('')
@@ -36,7 +42,7 @@ export function EditableTagList({
           >
             <Tag className="bg-transparent px-0 py-0 text-inherit">{skill}</Tag>
             <button
-              aria-label={`删除技能 ${skill}`}
+              aria-label={`${itemLabelPrefix} ${skill}`}
               className="text-brand-400 transition hover:text-brand-600"
               onClick={() => onRemove(skill)}
               type="button"
@@ -50,11 +56,11 @@ export function EditableTagList({
         <input
           className="min-w-0 flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-brand-500"
           onChange={(event) => setNextSkill(event.target.value)}
-          placeholder="添加技能"
+          placeholder={placeholder}
           value={nextSkill}
         />
         <Button className="sm:px-5" onClick={handleAddSkill} type="button">
-          添加技能
+          {addButtonLabel}
         </Button>
       </div>
     </div>
