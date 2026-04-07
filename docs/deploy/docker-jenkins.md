@@ -38,10 +38,12 @@ Then edit:
 
 Important values:
 
-- `authKey`: replace with a strong secret
+- `AUTH_KEY`: replace with a strong secret in `/srv/jianli/deploy.env`
 - `browserPath`: keep `/usr/bin/chromium` unless your server uses another binary
 - `APP_CONFIG_PATH`: should point to `/srv/jianli/config/config.production.json`
 - `APP_DATA_DIR`: should point to `/srv/jianli/data`
+
+Note: `config.production.json` no longer stores the auth secret.
 
 ## 3. Start Jenkins
 
@@ -120,3 +122,4 @@ docker compose --env-file /srv/jianli/deploy.env -f deploy/docker-compose.yml up
 
 - Jenkins runs with Docker socket access. This is acceptable for this single-host setup but should be tightened later if the environment grows.
 - PDF export depends on the browser path inside the runtime container. If Chromium is missing or the path is wrong, PDF export will fail even if the site otherwise works.
+- The backend now requires `AUTH_KEY` from environment and will not start if that variable is missing.

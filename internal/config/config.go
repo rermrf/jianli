@@ -9,7 +9,7 @@ import (
 )
 
 type Config struct {
-	AuthKey        string `json:"authKey"`
+	AuthKey        string `json:"-"`
 	BrowserPath    string `json:"browserPath"`
 	DBPath         string `json:"dbPath"`
 	FrontendOrigin string `json:"frontendOrigin"`
@@ -29,8 +29,9 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("decode config.json: %w", err)
 	}
 
+	cfg.AuthKey = os.Getenv("AUTH_KEY")
 	if cfg.AuthKey == "" {
-		return Config{}, errors.New("authKey is required in config.json")
+		return Config{}, errors.New("AUTH_KEY is required")
 	}
 	if cfg.Port == "" {
 		cfg.Port = "8080"

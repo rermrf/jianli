@@ -1,5 +1,5 @@
 ﻿{
-  "authKey": "wen",
+  "browserPath": "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
   "port": "8080",
   "dbPath": "./data/resume.db",
   "frontendOrigin": "http://localhost:5173"

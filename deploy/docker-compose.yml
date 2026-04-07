@@ -8,6 +8,8 @@ services:
       target: app
     image: jianli-app:local
     restart: unless-stopped
+    environment:
+      AUTH_KEY: ${AUTH_KEY}
     volumes:
       - ${APP_CONFIG_PATH}:/app/config.json:ro
       - ${APP_DATA_DIR}:/app/data
