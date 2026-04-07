@@ -2,5 +2,5 @@
   "browserPath": "/usr/bin/chromium",
   "port": "8080",
   "dbPath": "/app/data/resume.db",
-  "frontendOrigin": "https://resume.example.com"
+  "frontendOrigin": "https://wenemoji.com"
 }

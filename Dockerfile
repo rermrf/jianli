@@ -22,7 +22,3 @@ RUN mkdir -p /app/web/dist /app/data/uploads/avatars
 COPY --from=web-build /src/web/dist /app/web/dist
 EXPOSE 8080
 CMD ["/app/bin/jianli-server"]
-
-FROM nginx:1.27-alpine AS nginx
-COPY deploy/nginx/default.conf /etc/nginx/conf.d/default.conf
-COPY --from=web-build /src/web/dist /usr/share/nginx/html
