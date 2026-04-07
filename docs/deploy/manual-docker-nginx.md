@@ -1,4 +1,4 @@
-﻿# Docker Manual Deployment Guide
+# Docker Manual Deployment Guide
 
 ## 1. Server prerequisites
 
@@ -39,11 +39,12 @@ Then edit them.
 `/srv/jianli/config/config.production.json`
 - keep `browserPath` as a Linux browser path such as `/usr/bin/chromium`
 - keep `frontendOrigin` as `https://wenemoji.com`
+- set `port` to `8088`
 - do not add `authKey` here
 
 `/srv/jianli/deploy.env`
 - set `AUTH_KEY` to a strong secret
-- keep `APP_BIND=127.0.0.1:8080:8080` so the app is reachable only from the host and your existing Nginx container
+- keep `APP_BIND=127.0.0.1:8088:8088` so the app is reachable only from the host and your existing Nginx container
 
 ## 4. First deployment
 
@@ -67,14 +68,14 @@ docker compose --env-file /srv/jianli/deploy.env -f deploy/docker-compose.yml up
 ## 6. Health check
 
 ```bash
-APP_HEALTHCHECK_URL=http://127.0.0.1:8080/api/resume bash deploy/scripts/healthcheck.sh
+APP_HEALTHCHECK_URL=http://127.0.0.1:8088/api/resume bash deploy/scripts/healthcheck.sh
 ```
 
 Expected: exit code `0`.
 
 ## 7. Existing Nginx container integration
 
-Your existing Nginx container should reverse-proxy `wenemoji.com` to the host-local app port `127.0.0.1:8080`.
+Your existing Nginx container should reverse-proxy `wenemoji.com` to the host-local app port `127.0.0.1:8088`.
 
 If that Nginx container can access the host network, add a server block similar to:
 
@@ -84,7 +85,7 @@ server {
     server_name wenemoji.com www.wenemoji.com;
 
     location / {
-        proxy_pass http://host.docker.internal:8080;
+        proxy_pass http://host.docker.internal:8088;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -93,7 +94,7 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://host.docker.internal:8080;
+        proxy_pass http://host.docker.internal:8088;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -102,7 +103,7 @@ server {
     }
 
     location /uploads/ {
-        proxy_pass http://host.docker.internal:8080;
+        proxy_pass http://host.docker.internal:8088;
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
