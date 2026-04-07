@@ -1,10 +1,11 @@
 ﻿interface SaveToastProps {
-  visible: boolean
+  message?: string;
+  visible: boolean;
 }
 
-export function SaveToast({ visible }: SaveToastProps) {
+export function SaveToast({ message = "已保存草稿", visible }: SaveToastProps) {
   if (!visible) {
-    return null
+    return null;
   }
 
   return (
@@ -12,7 +13,7 @@ export function SaveToast({ visible }: SaveToastProps) {
       aria-live="polite"
       className="fixed bottom-6 left-1/2 -translate-x-1/2 rounded-full bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-lg"
     >
-      已保存草稿
+      {message}
     </div>
-  )
+  );
 }

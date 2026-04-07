@@ -1,18 +1,22 @@
-﻿import { Link, NavLink } from 'react-router-dom'
-import { isAuthenticated } from '../../lib/auth'
-import { Button } from '../common/Button'
+﻿import { Link, NavLink } from "react-router-dom";
+import { isAuthenticated } from "../../lib/auth";
+import { Button } from "../common/Button";
 
 const protectedNavItems = [
-  { to: '/edit', label: '编辑' },
-  { to: '/visitors', label: '访客' },
-]
+  { to: "/edit", label: "编辑" },
+  { to: "/drafts", label: "草稿" },
+  { to: "/visitors", label: "访客" },
+];
 
 export function TopNav() {
-  const authed = isAuthenticated()
+  const authed = isAuthenticated();
 
   return (
     <header className="hidden rounded-3xl border border-slate-200 bg-white px-6 py-4 shadow-[var(--shadow-card)] md:flex md:items-center md:justify-between">
-      <Link className="flex items-center gap-3 text-sm font-semibold text-slate-900" to="/">
+      <Link
+        className="flex items-center gap-3 text-sm font-semibold text-slate-900"
+        to="/"
+      >
         <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-500 text-xs text-white">
           W
         </span>
@@ -21,7 +25,7 @@ export function TopNav() {
       <nav className="flex items-center gap-5 text-sm text-slate-500">
         <NavLink
           className={({ isActive }) =>
-            isActive ? 'text-brand-600' : 'transition hover:text-slate-900'
+            isActive ? "text-brand-600" : "transition hover:text-slate-900"
           }
           to="/"
         >
@@ -32,7 +36,9 @@ export function TopNav() {
               <NavLink
                 key={item.to}
                 className={({ isActive }) =>
-                  isActive ? 'text-brand-600' : 'transition hover:text-slate-900'
+                  isActive
+                    ? "text-brand-600"
+                    : "transition hover:text-slate-900"
                 }
                 to={item.to}
               >
@@ -47,5 +53,5 @@ export function TopNav() {
         </Button>
       </Link>
     </header>
-  )
+  );
 }

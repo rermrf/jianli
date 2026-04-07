@@ -1,63 +1,74 @@
-﻿import { useState } from 'react'
-import { Button } from '../components/common/Button'
-import { SectionCard } from '../components/common/SectionCard'
-import { AvatarUploader } from '../components/editor/AvatarUploader'
+﻿import { useState } from "react";
+import { Button } from "../components/common/Button";
+import { SectionCard } from "../components/common/SectionCard";
+import { AvatarUploader } from "../components/editor/AvatarUploader";
 import {
   EditableListItem,
   EditableListSection,
-} from '../components/editor/EditableListSection'
-import { EditableTagList } from '../components/editor/EditableTagList'
-import { FieldInput } from '../components/editor/FieldInput'
-import { SaveToast } from '../components/editor/SaveToast'
-import { AppShell } from '../components/layout/AppShell'
-import { TopNav } from '../components/layout/TopNav'
-import { useResumeDraft } from '../hooks/useResumeDraft'
+} from "../components/editor/EditableListSection";
+import { EditableTagList } from "../components/editor/EditableTagList";
+import { FieldInput } from "../components/editor/FieldInput";
+import { SaveDraftDialog } from "../components/editor/SaveDraftDialog";
+import { SaveToast } from "../components/editor/SaveToast";
+import { AppShell } from "../components/layout/AppShell";
+import { TopNav } from "../components/layout/TopNav";
+import { useResumeDraft } from "../hooks/useResumeDraft";
+import { ApiError } from "../lib/api";
+import { createResumeDraft } from "../lib/resumeDrafts";
 import type {
   Award,
   EducationExperience,
   ProjectExperience,
   WorkExperience,
-} from '../types/resume'
+} from "../types/resume";
 
 function createEmptyWorkExperience(): WorkExperience {
   return {
-    company: '',
-    role: '',
-    startDate: '',
-    endDate: '',
-    description: [''],
-  }
+    company: "",
+    role: "",
+    startDate: "",
+    endDate: "",
+    description: [""],
+  };
 }
 
 function createEmptyProject(): ProjectExperience {
   return {
-    name: '',
-    startDate: '',
-    endDate: '',
-    description: [''],
-  }
+    name: "",
+    startDate: "",
+    endDate: "",
+    description: [""],
+  };
 }
 
 function createEmptyEducation(): EducationExperience {
   return {
-    school: '',
-    major: '',
-    degree: '',
-    startDate: '',
-    endDate: '',
-  }
+    school: "",
+    major: "",
+    degree: "",
+    startDate: "",
+    endDate: "",
+  };
 }
 
 function createEmptyAward(): Award {
   return {
-    date: '',
-    title: '',
-  }
+    date: "",
+    title: "",
+  };
 }
 
 export function EditPage() {
-  const { draft, loading, saveDraft, setDraft } = useResumeDraft()
-  const [saved, setSaved] = useState(false)
+  const { draft, loading, saveDraft, setDraft } = useResumeDraft();
+  const [draftDialogOpen, setDraftDialogOpen] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
+  const [draftSaving, setDraftSaving] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  function showToast(message: string) {
+    setToastMessage(message);
+    window.setTimeout(() => setToastMessage(null), 1800);
+  }
 
   function updateProfileField<Field extends keyof typeof draft.profile>(
     field: Field,
@@ -69,60 +80,87 @@ export function EditPage() {
         ...draft.profile,
         [field]: value,
       },
-    })
+    });
   }
 
   function updateSkills(nextSkills: string[]) {
     setDraft({
       ...draft,
       skills: nextSkills,
-    })
+    });
   }
 
   function updateWorkExperience(index: number, nextItem: WorkExperience) {
-    const nextItems = [...draft.workExperience]
-    nextItems[index] = nextItem
+    const nextItems = [...draft.workExperience];
+    nextItems[index] = nextItem;
 
     setDraft({
       ...draft,
       workExperience: nextItems,
-    })
+    });
   }
 
   function updateProject(index: number, nextItem: ProjectExperience) {
-    const nextItems = [...draft.projects]
-    nextItems[index] = nextItem
+    const nextItems = [...draft.projects];
+    nextItems[index] = nextItem;
 
     setDraft({
       ...draft,
       projects: nextItems,
-    })
+    });
   }
 
   function updateEducation(index: number, nextItem: EducationExperience) {
-    const nextItems = [...draft.education]
-    nextItems[index] = nextItem
+    const nextItems = [...draft.education];
+    nextItems[index] = nextItem;
 
     setDraft({
       ...draft,
       education: nextItems,
-    })
+    });
   }
 
   function updateAward(index: number, nextItem: Award) {
-    const nextItems = [...draft.awards]
-    nextItems[index] = nextItem
+    const nextItems = [...draft.awards];
+    nextItems[index] = nextItem;
 
     setDraft({
       ...draft,
       awards: nextItems,
-    })
+    });
   }
 
-  async function handleSave() {
-    await saveDraft()
-    setSaved(true)
-    window.setTimeout(() => setSaved(false), 1800)
+  async function handleSaveMainResume() {
+    await saveDraft();
+    showToast("已保存主简历");
+  }
+
+  async function handleSaveAsDraft(name: string, note: string) {
+    if (!name) {
+      setDraftError("请输入草稿名称");
+      return;
+    }
+
+    try {
+      setDraftSaving(true);
+      await createResumeDraft({
+        data: draft,
+        name,
+        note,
+      });
+      setDraftDialogOpen(false);
+      setDraftError(null);
+      showToast("草稿已保存");
+    } catch (error) {
+      setDraftError(error instanceof ApiError ? error.message : "保存草稿失败");
+    } finally {
+      setDraftSaving(false);
+    }
+  }
+
+  function openSaveDraftDialog() {
+    setDraftError(null);
+    setDraftDialogOpen(true);
   }
 
   if (loading) {
@@ -131,7 +169,7 @@ export function EditPage() {
         <TopNav />
         <SectionCard className="text-sm text-slate-500">加载中...</SectionCard>
       </AppShell>
-    )
+    );
   }
 
   return (
@@ -140,16 +178,26 @@ export function EditPage() {
       <div className="flex items-center justify-between gap-4 md:hidden">
         <Button variant="ghost">取消</Button>
         <h1 className="text-lg font-semibold text-slate-900">编辑简历</h1>
-        <Button onClick={handleSave}>保存</Button>
+        <div className="flex items-center gap-2">
+          <Button onClick={openSaveDraftDialog} variant="secondary">
+            保存为草稿
+          </Button>
+          <Button onClick={handleSaveMainResume}>保存主简历</Button>
+        </div>
       </div>
       <div className="hidden items-center justify-between gap-4 md:flex">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">编辑简历</h1>
-          <p className="mt-2 text-sm text-slate-500">当前保存会调用后端接口并持久化到数据库。</p>
+          <p className="mt-2 text-sm text-slate-500">
+            保存主简历会直接覆盖当前线上简历，保存为草稿则会生成一个独立版本。
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="secondary">取消</Button>
-          <Button onClick={handleSave}>保存</Button>
+          <Button onClick={openSaveDraftDialog} variant="secondary">
+            保存为草稿
+          </Button>
+          <Button onClick={handleSaveMainResume}>保存主简历</Button>
         </div>
       </div>
 
@@ -172,22 +220,22 @@ export function EditPage() {
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
               <FieldInput
                 label="姓名"
-                onChange={(value) => updateProfileField('name', value)}
+                onChange={(value) => updateProfileField("name", value)}
                 value={draft.profile.name}
               />
               <FieldInput
                 label="职位"
-                onChange={(value) => updateProfileField('title', value)}
+                onChange={(value) => updateProfileField("title", value)}
                 value={draft.profile.title}
               />
               <FieldInput
                 label="手机号"
-                onChange={(value) => updateProfileField('phone', value)}
+                onChange={(value) => updateProfileField("phone", value)}
                 value={draft.profile.phone}
               />
               <FieldInput
                 label="邮箱"
-                onChange={(value) => updateProfileField('email', value)}
+                onChange={(value) => updateProfileField("email", value)}
                 value={draft.profile.email}
               />
             </div>
@@ -198,7 +246,7 @@ export function EditPage() {
             <EditableTagList
               onAdd={(skill) => {
                 if (!draft.skills.includes(skill)) {
-                  updateSkills([...draft.skills, skill])
+                  updateSkills([...draft.skills, skill]);
                 }
               }}
               onRemove={(skill) =>
@@ -224,7 +272,9 @@ export function EditPage() {
                 onRemove={() =>
                   setDraft({
                     ...draft,
-                    education: draft.education.filter((_, current) => current !== index),
+                    education: draft.education.filter(
+                      (_, current) => current !== index,
+                    ),
                   })
                 }
                 title={`教育经历 ${index + 1}`}
@@ -232,22 +282,30 @@ export function EditPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <FieldInput
                     label="学校"
-                    onChange={(value) => updateEducation(index, { ...item, school: value })}
+                    onChange={(value) =>
+                      updateEducation(index, { ...item, school: value })
+                    }
                     value={item.school}
                   />
                   <FieldInput
                     label="专业"
-                    onChange={(value) => updateEducation(index, { ...item, major: value })}
+                    onChange={(value) =>
+                      updateEducation(index, { ...item, major: value })
+                    }
                     value={item.major}
                   />
                   <FieldInput
                     label="学历"
-                    onChange={(value) => updateEducation(index, { ...item, degree: value })}
+                    onChange={(value) =>
+                      updateEducation(index, { ...item, degree: value })
+                    }
                     value={item.degree}
                   />
                   <FieldInput
                     label="开始时间"
-                    onChange={(value) => updateEducation(index, { ...item, startDate: value })}
+                    onChange={(value) =>
+                      updateEducation(index, { ...item, startDate: value })
+                    }
                     value={item.startDate}
                   />
                 </div>
@@ -271,7 +329,9 @@ export function EditPage() {
                 onRemove={() =>
                   setDraft({
                     ...draft,
-                    awards: draft.awards.filter((_, current) => current !== index),
+                    awards: draft.awards.filter(
+                      (_, current) => current !== index,
+                    ),
                   })
                 }
                 title={`奖项 ${index + 1}`}
@@ -279,12 +339,16 @@ export function EditPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <FieldInput
                     label="日期"
-                    onChange={(value) => updateAward(index, { ...item, date: value })}
+                    onChange={(value) =>
+                      updateAward(index, { ...item, date: value })
+                    }
                     value={item.date}
                   />
                   <FieldInput
                     label="奖项名称"
-                    onChange={(value) => updateAward(index, { ...item, title: value })}
+                    onChange={(value) =>
+                      updateAward(index, { ...item, title: value })
+                    }
                     value={item.title}
                   />
                 </div>
@@ -299,7 +363,10 @@ export function EditPage() {
             onAdd={() =>
               setDraft({
                 ...draft,
-                workExperience: [...draft.workExperience, createEmptyWorkExperience()],
+                workExperience: [
+                  ...draft.workExperience,
+                  createEmptyWorkExperience(),
+                ],
               })
             }
             title="工作经历"
@@ -352,11 +419,11 @@ export function EditPage() {
                   onChange={(value) =>
                     updateWorkExperience(index, {
                       ...item,
-                      description: value.split('\n'),
+                      description: value.split("\n"),
                     })
                   }
                   textarea
-                  value={item.description.join('\n')}
+                  value={item.description.join("\n")}
                 />
               </EditableListItem>
             ))}
@@ -378,7 +445,9 @@ export function EditPage() {
                 onRemove={() =>
                   setDraft({
                     ...draft,
-                    projects: draft.projects.filter((_, current) => current !== index),
+                    projects: draft.projects.filter(
+                      (_, current) => current !== index,
+                    ),
                   })
                 }
                 title={`项目经历 ${index + 1}`}
@@ -386,7 +455,9 @@ export function EditPage() {
                 <div className="grid gap-4 md:grid-cols-2">
                   <FieldInput
                     label="项目名称"
-                    onChange={(value) => updateProject(index, { ...item, name: value })}
+                    onChange={(value) =>
+                      updateProject(index, { ...item, name: value })
+                    }
                     value={item.name}
                   />
                   <FieldInput
@@ -398,7 +469,9 @@ export function EditPage() {
                   />
                   <FieldInput
                     label="结束时间"
-                    onChange={(value) => updateProject(index, { ...item, endDate: value })}
+                    onChange={(value) =>
+                      updateProject(index, { ...item, endDate: value })
+                    }
                     value={item.endDate}
                   />
                 </div>
@@ -407,11 +480,11 @@ export function EditPage() {
                   onChange={(value) =>
                     updateProject(index, {
                       ...item,
-                      description: value.split('\n'),
+                      description: value.split("\n"),
                     })
                   }
                   textarea
-                  value={item.description.join('\n')}
+                  value={item.description.join("\n")}
                 />
               </EditableListItem>
             ))}
@@ -419,7 +492,17 @@ export function EditPage() {
         </div>
       </div>
 
-      <SaveToast visible={saved} />
+      <SaveDraftDialog
+        error={draftError}
+        onCancel={() => setDraftDialogOpen(false)}
+        onConfirm={handleSaveAsDraft}
+        open={draftDialogOpen}
+        saving={draftSaving}
+      />
+      <SaveToast
+        message={toastMessage ?? undefined}
+        visible={toastMessage !== null}
+      />
     </AppShell>
-  )
+  );
 }

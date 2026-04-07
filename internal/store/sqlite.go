@@ -1,4 +1,4 @@
-﻿package store
+package store
 
 import (
 	"os"
@@ -24,7 +24,7 @@ func Open(path string) (*gorm.DB, error) {
 		return nil, err
 	}
 
-	if err := db.AutoMigrate(&model.ResumeRecord{}, &model.VisitorRecord{}); err != nil {
+	if err := db.AutoMigrate(&model.ResumeRecord{}, &model.ResumeDraftRecord{}, &model.VisitorRecord{}); err != nil {
 		return nil, err
 	}
 

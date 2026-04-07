@@ -1,4 +1,4 @@
-﻿package main
+package main
 
 import (
 	"log"
@@ -42,8 +42,10 @@ func newRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 	router.Use(middleware.CORS(cfg.FrontendOrigin))
 
 	resumeStore := store.NewResumeStore(db)
+	draftStore := store.NewResumeDraftStore(db, resumeStore)
 	visitorStore := store.NewVisitorStore(db)
 	resumeHandler := handler.NewResumeHandler(resumeStore, pdf.NewExporter())
+	draftHandler := handler.NewResumeDraftHandler(draftStore)
 	visitorHandler := handler.NewVisitorHandler(visitorStore)
 	uploadHandler := handler.NewUploadHandler(filepath.Clean("./data/uploads/avatars"))
 
@@ -57,6 +59,11 @@ func newRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 	protected := router.Group("/api")
 	protected.Use(middleware.Auth(cfg.AuthKey))
 	protected.PUT("/resume", resumeHandler.Update)
+	protected.POST("/resume/drafts", draftHandler.Create)
+	protected.GET("/resume/drafts", draftHandler.List)
+	protected.GET("/resume/drafts/:id", draftHandler.Get)
+	protected.PUT("/resume/drafts/:id/publish", draftHandler.Publish)
+	protected.DELETE("/resume/drafts/:id", draftHandler.Delete)
 	protected.GET("/visitors", visitorHandler.List)
 	protected.GET("/visitors/stats", visitorHandler.Stats)
 	protected.POST("/upload/avatar", uploadHandler.UploadAvatar)

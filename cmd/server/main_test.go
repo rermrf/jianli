@@ -1,4 +1,4 @@
-﻿package main
+package main
 
 import (
 	"net/http"
@@ -34,6 +34,11 @@ func TestNewRouterRegistersCoreRoutes(t *testing.T) {
 		{method: http.MethodPost, path: "/api/upload/avatar", codes: []int{http.StatusUnauthorized, http.StatusBadRequest, http.StatusOK}},
 		{method: http.MethodGet, path: "/api/visitors", codes: []int{http.StatusUnauthorized, http.StatusOK}},
 		{method: http.MethodGet, path: "/api/visitors/stats", codes: []int{http.StatusUnauthorized, http.StatusOK}},
+		{method: http.MethodPost, path: "/api/resume/drafts", codes: []int{http.StatusUnauthorized, http.StatusBadRequest, http.StatusOK}},
+		{method: http.MethodGet, path: "/api/resume/drafts", codes: []int{http.StatusUnauthorized, http.StatusOK}},
+		{method: http.MethodGet, path: "/api/resume/drafts/1", codes: []int{http.StatusUnauthorized, http.StatusNotFound, http.StatusOK}},
+		{method: http.MethodPut, path: "/api/resume/drafts/1/publish", codes: []int{http.StatusUnauthorized, http.StatusNotFound, http.StatusOK}},
+		{method: http.MethodDelete, path: "/api/resume/drafts/1", codes: []int{http.StatusUnauthorized, http.StatusNotFound, http.StatusOK}},
 		{method: http.MethodGet, path: "/uploads/avatars/missing.png", codes: []int{http.StatusNotFound, http.StatusOK}},
 	} {
 		recorder := httptest.NewRecorder()
