@@ -1,4 +1,4 @@
-﻿# Docker Manual Deployment Guide
+# Docker Manual Deployment Guide
 
 ## 1. Server prerequisites
 
@@ -74,6 +74,25 @@ docker compose -f deploy/docker-compose.yml up -d --build app
 bash deploy/scripts/healthcheck.sh
 ```
 
+The script now verifies three paths on the app process:
+
+- `/` returns the public homepage shell
+- `/drafts/healthcheck` returns the SPA fallback shell
+- `/api/resume` returns the public resume payload
+
+Default target:
+
+```bash
+http://127.0.0.1:8088
+```
+
+Optional overrides:
+
+- `HEALTHCHECK_BASE_URL`
+- `HEALTHCHECK_PUBLIC_URL`
+- `HEALTHCHECK_SPA_URL`
+- `HEALTHCHECK_API_URL`
+
 Expected: exit code `0`.
 
 ## 7. Existing Nginx container integration
@@ -121,6 +140,7 @@ server {
 After deployment, verify:
 
 - `https://wenemoji.com/` loads
+- `https://wenemoji.com/drafts/healthcheck` returns the SPA shell instead of a 404
 - `https://wenemoji.com/api/resume` returns 200
 - admin login works
 - avatar upload works

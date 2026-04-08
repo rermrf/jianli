@@ -2,7 +2,11 @@ package main
 
 import (
 	"log"
+	"net/http"
+	"os"
+	pathpkg "path"
 	"path/filepath"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -53,6 +57,7 @@ func newRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 	router.GET("/api/resume", resumeHandler.Get)
 	router.GET("/api/resume/pdf", resumeHandler.ExportPDF)
 	router.POST("/api/visitors", visitorHandler.Create)
+	router.POST("/api/visitors/:id", visitorHandler.UpdateDuration)
 	router.PATCH("/api/visitors/:id", visitorHandler.UpdateDuration)
 	router.Static("/uploads", filepath.Clean("./data/uploads"))
 
@@ -68,5 +73,40 @@ func newRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 	protected.GET("/visitors/stats", visitorHandler.Stats)
 	protected.POST("/upload/avatar", uploadHandler.UploadAvatar)
 
+	router.NoRoute(serveFrontend(filepath.Clean("./web/dist")))
+
 	return router
+}
+
+func serveFrontend(distDir string) gin.HandlerFunc {
+	indexPath := filepath.Join(distDir, "index.html")
+
+	return func(c *gin.Context) {
+		if c.Request.Method != http.MethodGet && c.Request.Method != http.MethodHead {
+			c.Status(http.StatusNotFound)
+			return
+		}
+
+		requestPath := c.Request.URL.Path
+		if requestPath == "/api" || strings.HasPrefix(requestPath, "/api/") || requestPath == "/uploads" || strings.HasPrefix(requestPath, "/uploads/") {
+			c.Status(http.StatusNotFound)
+			return
+		}
+
+		cleanPath := pathpkg.Clean("/" + strings.TrimPrefix(requestPath, "/"))
+		if cleanPath != "/" {
+			candidatePath := filepath.Join(distDir, filepath.FromSlash(strings.TrimPrefix(cleanPath, "/")))
+			if info, err := os.Stat(candidatePath); err == nil && !info.IsDir() {
+				c.File(candidatePath)
+				return
+			}
+		}
+
+		if info, err := os.Stat(indexPath); err == nil && !info.IsDir() {
+			c.File(indexPath)
+			return
+		}
+
+		c.Status(http.StatusNotFound)
+	}
 }
