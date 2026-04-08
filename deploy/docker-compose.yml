@@ -8,10 +8,8 @@ services:
       target: app
     image: jianli-app:local
     restart: unless-stopped
-    environment:
-      AUTH_KEY: ${AUTH_KEY}
     volumes:
       - ../config.json:/app/config.json:ro
       - ../data:/app/data
     ports:
-      - '${APP_BIND:-127.0.0.1:8088:8088}'
+      - '127.0.0.1:8088:8088'
