@@ -13,3 +13,12 @@ services:
       - ../data:/app/data
     ports:
       - '8088:8088'
+    networks:
+      default:
+      edge-proxy:
+        aliases:
+          - jianli-app
+
+networks:
+  edge-proxy:
+    external: true
