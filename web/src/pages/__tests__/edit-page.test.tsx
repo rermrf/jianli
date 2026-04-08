@@ -309,7 +309,9 @@ describe("edit page", () => {
 
   it("keeps avatarUrl when saving immediately after upload resolves", async () => {
     loginWithKey("resume-key");
-    let resolveUpload: ((value: Response) => void) | null = null;
+    let resolveUpload:
+      | ((value: Response | PromiseLike<Response>) => void)
+      | undefined;
     const fetchSpy = vi
       .spyOn(globalThis, "fetch")
       .mockImplementation((input, init) => {
@@ -325,7 +327,7 @@ describe("edit page", () => {
         }
 
         if (url === "/api/upload/avatar" && init?.method === "POST") {
-          return new Promise((resolve) => {
+          return new Promise<Response>((resolve) => {
             resolveUpload = resolve;
           });
         }
@@ -366,18 +368,21 @@ describe("edit page", () => {
     await user.upload(await screen.findByLabelText("选择头像"), file);
     await user.click(screen.getByRole("button", { name: "确认上传头像" }));
 
-    resolveUpload?.(
-      new Response(
-        JSON.stringify({
-          code: 0,
-          data: { url: "/uploads/avatars/avatar-latest.jpg" },
-        }),
-        {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
-    );
+    const finishUpload = resolveUpload;
+    if (finishUpload) {
+      finishUpload(
+        new Response(
+          JSON.stringify({
+            code: 0,
+            data: { url: "/uploads/avatars/avatar-latest.jpg" },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        ),
+      );
+    }
 
     await waitFor(() =>
       expect(fetchSpy).toHaveBeenCalledWith(
