@@ -259,15 +259,24 @@ export function EditPage() {
             <h2 className="text-lg font-semibold text-slate-900">基本信息</h2>
             <AvatarUploader
               currentUrl={draft.profile.avatarUrl}
-              onUploaded={(avatarUrl) =>
-                setDraft({
-                  ...draft,
-                  profile: {
-                    ...draft.profile,
-                    avatarUrl,
-                  },
-                })
-              }
+              onUploaded={async (avatarUrl) => {
+                let nextDraft = draft;
+
+                setDraft((current) => {
+                  nextDraft = {
+                    ...current,
+                    profile: {
+                      ...current.profile,
+                      avatarUrl,
+                    },
+                  };
+
+                  return nextDraft;
+                });
+
+                await saveDraft(nextDraft);
+                showToast("头像已保存");
+              }}
             />
             <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
               <FieldInput

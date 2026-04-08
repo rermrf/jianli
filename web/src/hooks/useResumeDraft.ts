@@ -1,4 +1,5 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
+import type { Dispatch, SetStateAction } from 'react'
 import { defaultResume } from '../data/mockResume'
 import { resetResumeDraft, loadResumeDraft, saveResumeDraft } from '../lib/storage'
 import type { ResumeData } from '../types/resume'
@@ -37,10 +38,6 @@ export function useResumeDraft() {
     }
   }, [])
 
-  function updateDraft(nextDraft: ResumeData) {
-    setDraft(nextDraft)
-  }
-
   async function saveDraft(nextDraft = draft) {
     const savedDraft = await saveResumeDraft(nextDraft)
     setDraft(savedDraft)
@@ -57,7 +54,7 @@ export function useResumeDraft() {
     draft,
     error,
     loading,
-    setDraft: updateDraft,
+    setDraft: setDraft as Dispatch<SetStateAction<ResumeData>>,
     saveDraft,
     restoreDefaultDraft,
   }

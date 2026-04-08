@@ -307,6 +307,170 @@ describe("edit page", () => {
     );
   });
 
+  it("keeps avatarUrl when saving immediately after upload resolves", async () => {
+    loginWithKey("resume-key");
+    let resolveUpload: ((value: Response) => void) | null = null;
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation((input, init) => {
+        const url = String(input);
+
+        if (url === "/api/resume" && (!init || init.method === "GET")) {
+          return Promise.resolve(
+            new Response(JSON.stringify({ code: 0, data: defaultResume }), {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+          );
+        }
+
+        if (url === "/api/upload/avatar" && init?.method === "POST") {
+          return new Promise((resolve) => {
+            resolveUpload = resolve;
+          });
+        }
+
+        if (url === "/api/resume" && init?.method === "PUT") {
+          return Promise.resolve(
+            new Response(
+              JSON.stringify({ code: 0, data: JSON.parse(String(init.body)) }),
+              {
+                status: 200,
+                headers: { "Content-Type": "application/json" },
+              },
+            ),
+          );
+        }
+
+        return Promise.resolve(
+          new Response(JSON.stringify({ code: 0, data: defaultResume }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      });
+
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: vi.fn(() => "blob:avatar-preview"),
+      revokeObjectURL: vi.fn(),
+    });
+
+    const user = userEvent.setup();
+    renderEditPage();
+
+    const file = new File([new Uint8Array([1, 2, 3])], "avatar.png", {
+      type: "image/png",
+    });
+
+    await user.upload(await screen.findByLabelText("选择头像"), file);
+    await user.click(screen.getByRole("button", { name: "确认上传头像" }));
+
+    resolveUpload?.(
+      new Response(
+        JSON.stringify({
+          code: 0,
+          data: { url: "/uploads/avatars/avatar-latest.jpg" },
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
+    );
+
+    await waitFor(() =>
+      expect(fetchSpy).toHaveBeenCalledWith(
+        "/api/upload/avatar",
+        expect.objectContaining({ method: "POST" }),
+      ),
+    );
+
+    await user.click(screen.getAllByRole("button", { name: "保存主简历" })[0]);
+
+    await waitFor(() => {
+      const saveCall = fetchSpy.mock.calls.find(
+        ([url, requestInit]) =>
+          String(url) === "/api/resume" && requestInit?.method === "PUT",
+      );
+      expect(saveCall).toBeDefined();
+      expect(String(saveCall?.[1]?.body)).toContain(
+        "/uploads/avatars/avatar-latest.jpg",
+      );
+    });
+  });
+
+  it("persists avatarUrl to the main resume immediately after upload succeeds", async () => {
+    loginWithKey("resume-key");
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementation(async (input, init) => {
+        const url = String(input);
+
+        if (url === "/api/resume" && (!init || init.method === "GET")) {
+          return new Response(JSON.stringify({ code: 0, data: defaultResume }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+
+        if (url === "/api/upload/avatar" && init?.method === "POST") {
+          return new Response(
+            JSON.stringify({
+              code: 0,
+              data: { url: "/uploads/avatars/avatar-autosave.jpg" },
+            }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        if (url === "/api/resume" && init?.method === "PUT") {
+          return new Response(
+            JSON.stringify({ code: 0, data: JSON.parse(String(init.body)) }),
+            {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            },
+          );
+        }
+
+        return new Response(JSON.stringify({ code: 0, data: defaultResume }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      });
+
+    vi.stubGlobal("URL", {
+      ...URL,
+      createObjectURL: vi.fn(() => "blob:avatar-preview"),
+      revokeObjectURL: vi.fn(),
+    });
+
+    const user = userEvent.setup();
+    renderEditPage();
+
+    const file = new File([new Uint8Array([1, 2, 3])], "avatar.png", {
+      type: "image/png",
+    });
+
+    await user.upload(await screen.findByLabelText("选择头像"), file);
+    await user.click(screen.getByRole("button", { name: "确认上传头像" }));
+
+    await waitFor(() => {
+      const saveCalls = fetchSpy.mock.calls.filter(
+        ([url, requestInit]) =>
+          String(url) === "/api/resume" && requestInit?.method === "PUT",
+      );
+      expect(saveCalls.length).toBeGreaterThan(0);
+      expect(String(saveCalls[0]?.[1]?.body)).toContain(
+        "/uploads/avatars/avatar-autosave.jpg",
+      );
+    });
+  });
+
   it("edits the missing profile summary fields and desired cities", async () => {
     loginWithKey("resume-key");
     const fetchSpy = mockResumeFetch();

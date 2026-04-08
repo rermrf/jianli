@@ -6,7 +6,7 @@ import { Button } from '../common/Button'
 
 interface AvatarUploaderProps {
   currentUrl?: string
-  onUploaded: (url: string) => void
+  onUploaded: (url: string) => Promise<void> | void
 }
 
 export function AvatarUploader({ currentUrl, onUploaded }: AvatarUploaderProps) {
@@ -34,7 +34,7 @@ export function AvatarUploader({ currentUrl, onUploaded }: AvatarUploaderProps) 
     try {
       const croppedFile = await createSquareAvatarFile(selectedFile)
       const avatarUrl = await uploadAvatar(croppedFile, authKey)
-      onUploaded(avatarUrl)
+      await onUploaded(avatarUrl)
       setPreviewUrl(avatarUrl)
       setSelectedFile(null)
     } catch (error) {
