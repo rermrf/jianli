@@ -38,6 +38,7 @@ Recommended production content:
 
 ```json
 {
+  "authKey": "replace-with-strong-secret",
   "browserPath": "/usr/bin/chromium",
   "port": "8088",
   "dbPath": "./data/resume.db",
@@ -46,61 +47,36 @@ Recommended production content:
 ```
 
 Notes:
-- do not add `authKey` into `config.json`
-- `AUTH_KEY` is environment-only
+- all runtime business config now lives in `config.json`
+- `config.example.json` is the only tracked template
 - keep `port` as `8088`
 
-## 4. Environment variables
-
-Create a local env file if you want:
-
-```bash
-cp deploy/env/app.env.example .env
-```
-
-Then set at least:
-
-```env
-AUTH_KEY=replace-with-strong-secret
-APP_BIND=127.0.0.1:8088:8088
-APP_HEALTHCHECK_URL=http://127.0.0.1:8088/api/resume
-```
-
-If you do not want a `.env` file, you can export `AUTH_KEY` inline when running Docker Compose.
-
-## 5. First deployment
+## 4. First deployment
 
 ```bash
 cd /root/wen/go/jianli
-docker compose --env-file .env -f deploy/docker-compose.yml up -d --build app
+docker compose -f deploy/docker-compose.yml up -d --build app
 ```
 
-Or without `.env`:
-
-```bash
-cd /root/wen/go/jianli
-AUTH_KEY='replace-with-strong-secret' docker compose -f deploy/docker-compose.yml up -d --build app
-```
-
-## 6. Routine deployment
+## 5. Routine deployment
 
 ```bash
 cd /root/wen/go/jianli
 git pull
 cp config.example.json config.json # if config.json does not exist yet on this server
 
-docker compose --env-file .env -f deploy/docker-compose.yml up -d --build app
+docker compose -f deploy/docker-compose.yml up -d --build app
 ```
 
-## 7. Health check
+## 6. Health check
 
 ```bash
-APP_HEALTHCHECK_URL=http://127.0.0.1:8088/api/resume bash deploy/scripts/healthcheck.sh
+bash deploy/scripts/healthcheck.sh
 ```
 
 Expected: exit code `0`.
 
-## 8. Existing Nginx container integration
+## 7. Existing Nginx container integration
 
 Your existing Nginx container should reverse-proxy `wenemoji.com` to the host-local app port `127.0.0.1:8088`.
 
@@ -140,7 +116,7 @@ server {
 }
 ```
 
-## 9. Validation checklist
+## 8. Validation checklist
 
 After deployment, verify:
 
@@ -151,7 +127,7 @@ After deployment, verify:
 - `/uploads/...` assets load
 - PDF export works
 
-## 10. Manual rollback
+## 9. Manual rollback
 
 Rollback is manual:
 
@@ -159,12 +135,12 @@ Rollback is manual:
 cd /root/wen/go/jianli
 # restore a known-good commit or branch
 
-docker compose --env-file .env -f deploy/docker-compose.yml up -d --build app
+docker compose -f deploy/docker-compose.yml up -d --build app
 ```
 
-## 11. Notes
+## 10. Notes
 
 - This repo no longer manages Jenkins or a project-internal Nginx container.
-- The backend requires `AUTH_KEY` from environment and will not start if it is missing.
+- The app now reads all runtime settings from `config.json`.
+- `config.json` is local-only and should be created from `config.example.json`.
 - PDF export depends on Chromium existing in the app image and `browserPath` matching that path.
-- `config.example.json` is the only tracked config template; `config.json` is local-only.

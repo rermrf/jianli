@@ -1,4 +1,5 @@
 ﻿{
+  "authKey": "replace-with-strong-secret",
   "browserPath": "/usr/bin/chromium",
   "port": "8088",
   "dbPath": "./data/resume.db",

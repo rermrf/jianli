@@ -26,31 +26,12 @@ func withTempConfigDir(t *testing.T) string {
 	return tempDir
 }
 
-func setAuthKey(t *testing.T, value string) {
-	t.Helper()
-
-	originalValue, existed := os.LookupEnv("AUTH_KEY")
-	if value == "" {
-		_ = os.Unsetenv("AUTH_KEY")
-	} else if err := os.Setenv("AUTH_KEY", value); err != nil {
-		t.Fatalf("Setenv(AUTH_KEY) returned error: %v", err)
-	}
-
-	t.Cleanup(func() {
-		if existed {
-			_ = os.Setenv("AUTH_KEY", originalValue)
-			return
-		}
-		_ = os.Unsetenv("AUTH_KEY")
-	})
-}
-
-func TestLoadUsesAuthKeyFromEnvironment(t *testing.T) {
+func TestLoadUsesAuthKeyFromConfigFile(t *testing.T) {
 	tempDir := withTempConfigDir(t)
-	setAuthKey(t, "resume-key")
 
 	configPath := filepath.Join(tempDir, "config.json")
 	configContent := `{
+  "authKey": "resume-key",
   "port": "9090",
   "dbPath": "./tmp/resume.db",
   "frontendOrigin": "http://localhost:5173"
@@ -69,7 +50,7 @@ func TestLoadUsesAuthKeyFromEnvironment(t *testing.T) {
 	}
 
 	if cfg.AuthKey != "resume-key" {
-		t.Fatalf("expected auth key from environment, got %q", cfg.AuthKey)
+		t.Fatalf("expected auth key from config file, got %q", cfg.AuthKey)
 	}
 
 	if cfg.DBPath != "./tmp/resume.db" {
@@ -83,7 +64,6 @@ func TestLoadUsesAuthKeyFromEnvironment(t *testing.T) {
 
 func TestLoadRequiresConfigFile(t *testing.T) {
 	withTempConfigDir(t)
-	setAuthKey(t, "resume-key")
 
 	_, err := Load()
 	if err == nil {
@@ -91,9 +71,8 @@ func TestLoadRequiresConfigFile(t *testing.T) {
 	}
 }
 
-func TestLoadRequiresAuthKeyEnvironmentVariable(t *testing.T) {
+func TestLoadRequiresAuthKeyInConfigFile(t *testing.T) {
 	withTempConfigDir(t)
-	setAuthKey(t, "")
 
 	if err := os.WriteFile("config.json", []byte(`{"port":"8080"}`), 0o644); err != nil {
 		t.Fatalf("WriteFile(config.json) returned error: %v", err)
@@ -101,15 +80,14 @@ func TestLoadRequiresAuthKeyEnvironmentVariable(t *testing.T) {
 
 	_, err := Load()
 	if err == nil {
-		t.Fatal("expected error when AUTH_KEY is missing")
+		t.Fatal("expected error when authKey is missing")
 	}
 }
 
-func TestLoadSupportsUTF8BOMConfigFileWithEnvironmentAuthKey(t *testing.T) {
+func TestLoadSupportsUTF8BOMConfigFile(t *testing.T) {
 	withTempConfigDir(t)
-	setAuthKey(t, "resume-key")
 
-	content := append([]byte{0xEF, 0xBB, 0xBF}, []byte(`{"port":"8080"}`)...)
+	content := append([]byte{0xEF, 0xBB, 0xBF}, []byte(`{"authKey":"resume-key","port":"8080"}`)...)
 	if err := os.WriteFile("config.json", content, 0o644); err != nil {
 		t.Fatalf("WriteFile(config.json) returned error: %v", err)
 	}
@@ -120,6 +98,6 @@ func TestLoadSupportsUTF8BOMConfigFileWithEnvironmentAuthKey(t *testing.T) {
 	}
 
 	if cfg.AuthKey != "resume-key" {
-		t.Fatalf("expected authKey from environment for BOM config, got %q", cfg.AuthKey)
+		t.Fatalf("expected authKey from BOM config, got %q", cfg.AuthKey)
 	}
 }
