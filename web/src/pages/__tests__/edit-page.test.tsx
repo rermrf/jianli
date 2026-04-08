@@ -1,4 +1,5 @@
 ﻿import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -304,5 +305,54 @@ describe("edit page", () => {
         }),
       ),
     );
+  });
+
+  it("edits the missing profile summary fields and desired cities", async () => {
+    loginWithKey("resume-key");
+    const fetchSpy = mockResumeFetch();
+
+    const user = userEvent.setup();
+    renderEditPage();
+
+    const ageInput = await screen.findByLabelText("年龄");
+    await user.clear(ageInput);
+    await user.type(ageInput, "26");
+
+    const genderInput = screen.getByLabelText("性别");
+    await user.clear(genderInput);
+    await user.type(genderInput, "男");
+
+    const educationInput = screen.getByLabelText("学历等级");
+    await user.clear(educationInput);
+    await user.type(educationInput, "硕士");
+
+    const experienceInput = screen.getByLabelText("工作年限");
+    await user.clear(experienceInput);
+    await user.type(experienceInput, "3年");
+
+    const locationInput = screen.getByLabelText("当前所在地");
+    await user.clear(locationInput);
+    await user.type(locationInput, "上海");
+
+    const citiesInput = screen.getByLabelText("意向城市");
+    fireEvent.change(citiesInput, { target: { value: "上海, 深圳 , 苏州" } });
+
+    await user.click(screen.getAllByRole("button", { name: "保存主简历" })[0]);
+
+    await waitFor(() => {
+      const saveCall = fetchSpy.mock.calls.find(
+        ([url, init]) =>
+          String(url) === "/api/resume" && init?.method === "PUT",
+      );
+      expect(saveCall).toBeDefined();
+
+      const body = JSON.parse(String(saveCall?.[1]?.body));
+      expect(body.profile.age).toBe(26);
+      expect(body.profile.gender).toBe("男");
+      expect(body.profile.education).toBe("硕士");
+      expect(body.profile.experience).toBe("3年");
+      expect(body.profile.location).toBe("上海");
+      expect(body.jobIntention.cities).toEqual(["上海", "深圳", "苏州"]);
+    });
   });
 });

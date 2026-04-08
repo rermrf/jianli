@@ -1,4 +1,5 @@
 ﻿import { useState } from "react";
+import { useEffect } from "react";
 import { Button } from "../components/common/Button";
 import { SectionCard } from "../components/common/SectionCard";
 import { AvatarUploader } from "../components/editor/AvatarUploader";
@@ -19,6 +20,7 @@ import type {
   Award,
   EducationExperience,
   ProjectExperience,
+  ResumeData,
   WorkExperience,
 } from "../types/resume";
 
@@ -81,11 +83,20 @@ export function EditPage() {
   const [draftError, setDraftError] = useState<string | null>(null);
   const [draftSaving, setDraftSaving] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [desiredCitiesInput, setDesiredCitiesInput] = useState("");
+
+  function parseDesiredCities(value: string) {
+    return value.split(/[，,]/).map((item) => item.trim()).filter(Boolean);
+  }
 
   function showToast(message: string) {
     setToastMessage(message);
     window.setTimeout(() => setToastMessage(null), 1800);
   }
+
+  useEffect(() => {
+    setDesiredCitiesInput(draft.jobIntention.cities.join(", "));
+  }, [draft.jobIntention.cities]);
 
   function updateProfileField<Field extends keyof typeof draft.profile>(
     field: Field,
@@ -104,6 +115,20 @@ export function EditPage() {
     setDraft({
       ...draft,
       skills: nextSkills,
+    });
+  }
+
+  function updateJobIntentionCities(value: string) {
+    const cities = parseDesiredCities(value);
+
+    setDesiredCitiesInput(value);
+
+    setDraft({
+      ...draft,
+      jobIntention: {
+        ...draft.jobIntention,
+        cities,
+      },
     });
   }
 
@@ -147,8 +172,18 @@ export function EditPage() {
     });
   }
 
+  function buildDraftForSave(): ResumeData {
+    return {
+      ...draft,
+      jobIntention: {
+        ...draft.jobIntention,
+        cities: parseDesiredCities(desiredCitiesInput),
+      },
+    };
+  }
+
   async function handleSaveMainResume() {
-    await saveDraft();
+    await saveDraft(buildDraftForSave());
     showToast("已保存主简历");
   }
 
@@ -161,7 +196,7 @@ export function EditPage() {
     try {
       setDraftSaving(true);
       await createResumeDraft({
-        data: draft,
+        data: buildDraftForSave(),
         name,
         note,
       });
@@ -244,6 +279,39 @@ export function EditPage() {
                 label="职位"
                 onChange={(value) => updateProfileField("title", value)}
                 value={draft.profile.title}
+              />
+              <FieldInput
+                label="年龄"
+                onChange={(value) =>
+                  updateProfileField("age", Number.parseInt(value, 10) || 0)
+                }
+                value={String(draft.profile.age)}
+              />
+              <FieldInput
+                label="性别"
+                onChange={(value) => updateProfileField("gender", value)}
+                value={draft.profile.gender}
+              />
+              <FieldInput
+                label="学历等级"
+                onChange={(value) => updateProfileField("education", value)}
+                value={draft.profile.education}
+              />
+              <FieldInput
+                label="工作年限"
+                onChange={(value) => updateProfileField("experience", value)}
+                value={draft.profile.experience}
+              />
+              <FieldInput
+                label="当前所在地"
+                onChange={(value) => updateProfileField("location", value)}
+                value={draft.profile.location}
+              />
+              <FieldInput
+                label="意向城市"
+                onChange={updateJobIntentionCities}
+                placeholder="多个城市用逗号分隔"
+                value={desiredCitiesInput}
               />
               <FieldInput
                 label="手机号"

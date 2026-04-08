@@ -1,4 +1,5 @@
-﻿import { useId, useMemo, useState } from 'react'
+import { useId, useMemo, useState } from 'react'
+import { ApiError } from '../../lib/api'
 import { getAuthKey } from '../../lib/auth'
 import { createSquareAvatarFile, uploadAvatar } from '../../lib/upload'
 import { Button } from '../common/Button'
@@ -36,8 +37,12 @@ export function AvatarUploader({ currentUrl, onUploaded }: AvatarUploaderProps) 
       onUploaded(avatarUrl)
       setPreviewUrl(avatarUrl)
       setSelectedFile(null)
-    } catch {
-      setError('头像上传失败，请稍后重试')
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 413) {
+        setError('头像文件过大，请换一张图片或先压缩后再上传')
+      } else {
+        setError('头像上传失败，请稍后重试')
+      }
     } finally {
       setUploading(false)
     }
@@ -60,7 +65,9 @@ export function AvatarUploader({ currentUrl, onUploaded }: AvatarUploaderProps) 
         <div className="space-y-3">
           <div>
             <p className="text-sm font-medium text-slate-800">头像</p>
-            <p className="text-xs text-slate-500">支持图片上传，默认裁剪为 1:1 正方形。</p>
+            <p className="text-xs text-slate-500">
+              支持图片上传，默认裁剪为 1:1 正方形，并自动压缩后再上传。
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <label

@@ -4,6 +4,10 @@ interface UploadAvatarResponse {
   url: string
 }
 
+const MAX_AVATAR_DIMENSION = 1024
+const TARGET_AVATAR_SIZE_BYTES = 900 * 1024
+const JPEG_QUALITIES = [0.86, 0.72, 0.6]
+
 export async function uploadAvatar(file: File, authKey: string): Promise<string> {
   const body = new FormData()
   body.append('file', file)
@@ -40,30 +44,48 @@ export async function createSquareAvatarFile(file: File): Promise<File> {
 
   try {
     const bitmap = await window.createImageBitmap(file)
-    const size = Math.min(bitmap.width, bitmap.height)
-    const offsetX = (bitmap.width - size) / 2
-    const offsetY = (bitmap.height - size) / 2
+    const sourceSize = Math.min(bitmap.width, bitmap.height)
+    const outputSize = Math.min(sourceSize, MAX_AVATAR_DIMENSION)
+    const offsetX = (bitmap.width - sourceSize) / 2
+    const offsetY = (bitmap.height - sourceSize) / 2
 
     const canvas = document.createElement('canvas')
-    canvas.width = size
-    canvas.height = size
+    canvas.width = outputSize
+    canvas.height = outputSize
     const context = canvas.getContext('2d')
     if (!context) {
       return file
     }
 
-    context.drawImage(bitmap, offsetX, offsetY, size, size, 0, 0, size, size)
+    context.drawImage(
+      bitmap,
+      offsetX,
+      offsetY,
+      sourceSize,
+      sourceSize,
+      0,
+      0,
+      outputSize,
+      outputSize,
+    )
 
-    const blob = await new Promise<Blob | null>((resolve) => {
-      canvas.toBlob(resolve, 'image/png')
-    })
+    let blob: Blob | null = null
+    for (const quality of JPEG_QUALITIES) {
+      blob = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob(resolve, 'image/jpeg', quality)
+      })
+
+      if (blob && blob.size <= TARGET_AVATAR_SIZE_BYTES) {
+        break
+      }
+    }
 
     if (!blob) {
       return file
     }
 
-    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.png', {
-      type: 'image/png',
+    return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', {
+      type: 'image/jpeg',
     })
   } catch {
     return file
