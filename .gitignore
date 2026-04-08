@@ -1,4 +1,5 @@
-.worktrees/
+﻿.worktrees/
 data/uploads/
 web/node_modules/
 web/dist/
+config.json

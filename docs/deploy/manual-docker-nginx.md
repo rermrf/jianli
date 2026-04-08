@@ -18,14 +18,21 @@ Create:
 mkdir -p /root/wen/go/jianli/data/uploads/avatars
 ```
 
-This deployment now uses files directly from the project directory:
+This deployment uses files directly from the project directory:
 
 - `/root/wen/go/jianli/config.json`
 - `/root/wen/go/jianli/data`
 
-## 3. Project config
+## 3. Create the runtime config
 
-Edit the project root `config.json` directly.
+After cloning the repo, generate your local runtime config:
+
+```bash
+cd /root/wen/go/jianli
+cp config.example.json config.json
+```
+
+Then edit `config.json`.
 
 Recommended production content:
 
@@ -80,6 +87,8 @@ AUTH_KEY='replace-with-strong-secret' docker compose -f deploy/docker-compose.ym
 ```bash
 cd /root/wen/go/jianli
 git pull
+cp config.example.json config.json # if config.json does not exist yet on this server
+
 docker compose --env-file .env -f deploy/docker-compose.yml up -d --build app
 ```
 
@@ -158,3 +167,4 @@ docker compose --env-file .env -f deploy/docker-compose.yml up -d --build app
 - This repo no longer manages Jenkins or a project-internal Nginx container.
 - The backend requires `AUTH_KEY` from environment and will not start if it is missing.
 - PDF export depends on Chromium existing in the app image and `browserPath` matching that path.
+- `config.example.json` is the only tracked config template; `config.json` is local-only.

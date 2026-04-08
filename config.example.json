@@ -1,6 +1,6 @@
 ﻿{
   "browserPath": "/usr/bin/chromium",
   "port": "8088",
-  "dbPath": "/app/data/resume.db",
+  "dbPath": "./data/resume.db",
   "frontendOrigin": "https://wenemoji.com"
 }
