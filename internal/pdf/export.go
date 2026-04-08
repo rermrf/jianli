@@ -1,4 +1,4 @@
-﻿package pdf
+package pdf
 
 import (
 	"bytes"
@@ -19,7 +19,12 @@ import (
 type resumeView struct {
 	Profile struct {
 		AvatarDataURL template.URL `json:"avatarUrl"`
+		Age           int          `json:"age"`
+		Education     string       `json:"education"`
 		Email         string       `json:"email"`
+		Experience    string       `json:"experience"`
+		Gender        string       `json:"gender"`
+		Hometown      string       `json:"hometown"`
 		Location      string       `json:"location"`
 		Name          string       `json:"name"`
 		Phone         string       `json:"phone"`
@@ -30,9 +35,11 @@ type resumeView struct {
 		Title string `json:"title"`
 	} `json:"awards"`
 	Education []struct {
-		Degree string `json:"degree"`
-		Major  string `json:"major"`
-		School string `json:"school"`
+		Degree    string `json:"degree"`
+		EndDate   string `json:"endDate"`
+		Major     string `json:"major"`
+		School    string `json:"school"`
+		StartDate string `json:"startDate"`
 	} `json:"education"`
 	Projects []struct {
 		Description []string `json:"description"`
@@ -40,7 +47,7 @@ type resumeView struct {
 		Name        string   `json:"name"`
 		StartDate   string   `json:"startDate"`
 	} `json:"projects"`
-	Skills []string `json:"skills"`
+	Skills         []string `json:"skills"`
 	WorkExperience []struct {
 		Company     string   `json:"company"`
 		Description []string `json:"description"`
@@ -179,7 +186,7 @@ func renderResumeHTML(view resumeView) (string, error) {
 <head>
 <meta charset="utf-8" />
 <style>
-body { font-family: Arial, sans-serif; padding: 32px; color: #1a1a1a; }
+body { font-family: "Inter", "Noto Sans CJK SC", "WenQuanYi Micro Hei", "PingFang SC", "Microsoft YaHei", Arial, sans-serif; padding: 32px; color: #1a1a1a; }
 h1 { margin: 0 0 8px; font-size: 28px; }
 h2 { margin: 28px 0 12px; font-size: 18px; }
 p, li { font-size: 14px; line-height: 1.6; }
@@ -198,6 +205,8 @@ img.avatar { width: 84px; height: 84px; border-radius: 999px; object-fit: cover;
 <p class="meta">{{ .Profile.Title }} | 所在地：{{ .Profile.Location }} | 手机号：{{ .Profile.Phone }} | 邮箱：{{ .Profile.Email }}</p>
 </div>
 </div>
+<h2>个人基本信息</h2>
+<p>{{ .Profile.Age }}岁 / {{ .Profile.Gender }} / {{ .Profile.Education }} / {{ .Profile.Experience }} / 籍贯：{{ .Profile.Hometown }}</p>
 <h2>技能</h2>
 <p>{{ range $index, $skill := .Skills }}{{ if $index }} / {{ end }}{{ $skill }}{{ end }}</p>
 <h2>工作经历</h2>
@@ -205,7 +214,7 @@ img.avatar { width: 84px; height: 84px; border-radius: 999px; object-fit: cover;
 <h2>项目经历</h2>
 {{ range .Projects }}<div class="block"><strong>{{ .Name }}</strong><p>{{ .StartDate }} - {{ .EndDate }}</p><ul>{{ range .Description }}<li>{{ . }}</li>{{ end }}</ul></div>{{ end }}
 <h2>教育经历</h2>
-{{ range .Education }}<div class="block"><strong>{{ .School }}</strong><p>{{ .Major }} · {{ .Degree }}</p></div>{{ end }}
+{{ range .Education }}<div class="block"><strong>{{ .School }}</strong><p>{{ .StartDate }} - {{ .EndDate }}</p><p>{{ .Major }} · {{ .Degree }}</p></div>{{ end }}
 <h2>荣誉奖项</h2>
 {{ range .Awards }}<div class="block"><strong>{{ .Title }}</strong><p>{{ .Date }}</p></div>{{ end }}
 </body>
@@ -223,5 +232,3 @@ img.avatar { width: 84px; height: 84px; border-radius: 999px; object-fit: cover;
 
 	return buffer.String(), nil
 }
-
-

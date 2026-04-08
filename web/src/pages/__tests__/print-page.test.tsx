@@ -10,6 +10,41 @@ describe('print page', () => {
     vi.restoreAllMocks()
   })
 
+  it('renders profile facts, education, and awards from the published resume', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+
+      if (url === '/api/resume') {
+        return new Response(JSON.stringify({ code: 0, data: defaultResume }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ code: 0, data: {} }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    render(
+      <MemoryRouter>
+        <PrintPage />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText(defaultResume.profile.name)).toBeInTheDocument()
+    expect(screen.getByText(String(defaultResume.profile.age))).toBeInTheDocument()
+    expect(screen.getByText(defaultResume.profile.gender)).toBeInTheDocument()
+    expect(screen.getByText(defaultResume.profile.education)).toBeInTheDocument()
+    expect(screen.getByText(defaultResume.profile.experience)).toBeInTheDocument()
+    expect(screen.getByText(defaultResume.profile.hometown)).toBeInTheDocument()
+    expect(screen.getByText('教育经历')).toBeInTheDocument()
+    expect(screen.getByText(defaultResume.education[0].school)).toBeInTheDocument()
+    expect(screen.getByText('荣誉奖项')).toBeInTheDocument()
+    expect(screen.getAllByText(defaultResume.awards[0].title)).not.toHaveLength(0)
+  })
+
   it('downloads a PDF file from the backend when the download button is clicked', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)

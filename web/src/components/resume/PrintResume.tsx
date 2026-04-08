@@ -5,6 +5,14 @@ interface PrintResumeProps {
 }
 
 export function PrintResume({ resume }: PrintResumeProps) {
+  const profileFacts = [
+    `${resume.profile.age}`,
+    resume.profile.gender,
+    resume.profile.education,
+    resume.profile.experience,
+    resume.profile.hometown,
+  ].filter(Boolean)
+
   return (
     <article className="mx-auto max-w-[794px] space-y-8 rounded-none bg-white p-8 text-slate-900 print:max-w-none print:p-0">
       <header className="border-b border-slate-200 pb-6">
@@ -37,8 +45,36 @@ export function PrintResume({ resume }: PrintResumeProps) {
       </header>
 
       <section className="space-y-3">
+        <h3 className="text-lg font-semibold">个人基本信息</h3>
+        <div className="flex flex-wrap gap-2 text-sm text-slate-600">
+          {profileFacts.map((item) => (
+            <span key={item} className="rounded-full bg-slate-100 px-3 py-1">
+              {item}
+            </span>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-3">
         <h3 className="text-lg font-semibold">个人技能</h3>
         <p className="text-sm leading-7 text-slate-600">{resume.skills.join(' / ')}</p>
+      </section>
+
+      <section className="space-y-4">
+        <h3 className="text-lg font-semibold">教育经历</h3>
+        {resume.education.map((item) => (
+          <div key={`${item.school}-${item.startDate}`} className="space-y-2">
+            <div className="flex items-start justify-between gap-3">
+              <strong>{item.school}</strong>
+              <span className="text-sm text-slate-500">
+                {item.startDate} - {item.endDate}
+              </span>
+            </div>
+            <p className="text-sm text-slate-600">
+              {item.major} / {item.degree}
+            </p>
+          </div>
+        ))}
       </section>
 
       <section className="space-y-4">
@@ -76,6 +112,16 @@ export function PrintResume({ resume }: PrintResumeProps) {
                 <li key={bullet}>{bullet}</li>
               ))}
             </ul>
+          </div>
+        ))}
+      </section>
+
+      <section className="space-y-4">
+        <h3 className="text-lg font-semibold">荣誉奖项</h3>
+        {resume.awards.map((item) => (
+          <div key={`${item.title}-${item.date}`} className="flex items-start justify-between gap-3">
+            <strong>{item.title}</strong>
+            <span className="text-sm text-slate-500">{item.date}</span>
           </div>
         ))}
       </section>

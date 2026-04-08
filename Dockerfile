@@ -14,7 +14,7 @@ RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -o /out/jianli-server ./cmd/s
 
 FROM debian:bookworm-slim AS app
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates chromium fonts-liberation \
+    && apt-get install -y --no-install-recommends ca-certificates chromium fontconfig fonts-liberation fonts-noto-cjk fonts-wqy-microhei \
     && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 COPY --from=go-build /out/jianli-server /app/bin/jianli-server

@@ -1,4 +1,4 @@
-﻿package pdf
+package pdf
 
 import (
 	"encoding/json"
@@ -35,7 +35,12 @@ func TestBuildResumeViewIncludesAvatarEducationAndAwards(t *testing.T) {
 		"profile": {
 			"name": "温庆京",
 			"title": "Golang 后端工程师",
+			"age": 25,
+			"gender": "男",
+			"education": "本科",
+			"experience": "0.9年",
 			"location": "浙江杭州",
+			"hometown": "江西赣州",
 			"phone": "17620096266",
 			"email": "3219431643@qq.com",
 			"avatarUrl": "/uploads/avatars/avatar.png"
@@ -46,7 +51,9 @@ func TestBuildResumeViewIncludesAvatarEducationAndAwards(t *testing.T) {
 		"education": [{
 			"school": "江西财经大学现代经济管理学院",
 			"major": "计算机科学与技术",
-			"degree": "本科"
+			"degree": "本科",
+			"startDate": "2023.09",
+			"endDate": "2025.07"
 		}],
 		"awards": [{
 			"date": "2022.09",
@@ -72,20 +79,22 @@ func TestBuildResumeViewIncludesAvatarEducationAndAwards(t *testing.T) {
 		t.Fatalf("expected rendered html to inline avatar data url, got %q", html)
 	}
 
-	if !strings.Contains(html, "教育经历") {
-		t.Fatal("expected rendered html to include education section")
-	}
-
-	if !strings.Contains(html, "江西财经大学现代经济管理学院") {
-		t.Fatal("expected rendered html to include education content")
-	}
-
-	if !strings.Contains(html, "荣誉奖项") {
-		t.Fatal("expected rendered html to include awards section")
-	}
-
-	if !strings.Contains(html, "国家励志奖学金") {
-		t.Fatal("expected rendered html to include awards content")
+	for _, expected := range []string{
+		"个人基本信息",
+		"25岁",
+		"男",
+		"本科",
+		"0.9年",
+		"江西赣州",
+		"教育经历",
+		"江西财经大学现代经济管理学院",
+		"2023.09 - 2025.07",
+		"荣誉奖项",
+		"国家励志奖学金",
+	} {
+		if !strings.Contains(html, expected) {
+			t.Fatalf("expected rendered html to include %q", expected)
+		}
 	}
 }
 
@@ -102,5 +111,22 @@ func TestResolveBrowserPathPrefersConfiguredPath(t *testing.T) {
 
 	if path != configuredPath {
 		t.Fatalf("expected configured path %q, got %q", configuredPath, path)
+	}
+}
+
+func TestRenderResumeHTMLUsesChineseCapableFontStack(t *testing.T) {
+	html, err := renderResumeHTML(resumeView{})
+	if err != nil {
+		t.Fatalf("renderResumeHTML() returned error: %v", err)
+	}
+
+	for _, expected := range []string{
+		"Noto Sans CJK SC",
+		"WenQuanYi Micro Hei",
+		"Microsoft YaHei",
+	} {
+		if !strings.Contains(html, expected) {
+			t.Fatalf("expected rendered html to include font %q", expected)
+		}
 	}
 }
