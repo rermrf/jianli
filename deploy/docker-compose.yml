@@ -12,4 +12,4 @@ services:
       - ../config.json:/app/config.json:ro
       - ../data:/app/data
     ports:
-      - '127.0.0.1:8088:8088'
+      - '8088:8088'
