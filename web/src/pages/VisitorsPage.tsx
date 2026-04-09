@@ -4,6 +4,7 @@ import type { VisitorRange, VisitorRecord, VisitorStats } from '../types/visitor
 import { Button } from '../components/common/Button'
 import { AppShell } from '../components/layout/AppShell'
 import { TopNav } from '../components/layout/TopNav'
+import { useResumeDraft } from '../hooks/useResumeDraft'
 import { StatsCards } from '../components/visitors/StatsCards'
 import { TrendChart } from '../components/visitors/TrendChart'
 import { VisitorList } from '../components/visitors/VisitorList'
@@ -17,6 +18,8 @@ const rangeOptions: { label: string; value: VisitorRange }[] = [
 ]
 
 export function VisitorsPage() {
+  const { loading: settingsLoading, siteSettings } = useResumeDraft()
+  const showPdfExport = !settingsLoading && siteSettings.allowPdfExport
   const [range, setRange] = useState<VisitorRange>('7d')
   const [stats, setStats] = useState<VisitorStats>(visitorStatsByRange['7d'])
   const [records, setRecords] = useState<VisitorRecord[]>([])
@@ -48,7 +51,7 @@ export function VisitorsPage() {
 
   return (
     <AppShell contentClassName="space-y-6">
-      <TopNav />
+      <TopNav showPdfExport={showPdfExport} />
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900">访客统计</h1>

@@ -4,16 +4,19 @@ import { EmptyHint } from "../components/common/EmptyHint";
 import { SectionCard } from "../components/common/SectionCard";
 import { AppShell } from "../components/layout/AppShell";
 import { TopNav } from "../components/layout/TopNav";
+import { useResumeDraft } from "../hooks/useResumeDraft";
 import { useResumeDraftList } from "../hooks/useResumeDraftList";
 
 export function DraftsPage() {
+  const { loading: settingsLoading, siteSettings } = useResumeDraft();
+  const showPdfExport = !settingsLoading && siteSettings.allowPdfExport;
   const { drafts, error, loading, publishDraft, removeDraft } =
     useResumeDraftList();
 
   if (loading) {
     return (
       <AppShell contentClassName="space-y-6">
-        <TopNav />
+        <TopNav showPdfExport={showPdfExport} />
         <SectionCard className="text-sm text-slate-500">加载中...</SectionCard>
       </AppShell>
     );
@@ -21,7 +24,7 @@ export function DraftsPage() {
 
   return (
     <AppShell contentClassName="space-y-6">
-      <TopNav />
+      <TopNav showPdfExport={showPdfExport} />
       <SectionCard className="space-y-2">
         <h1 className="text-2xl font-semibold text-slate-900">草稿版本</h1>
         <p className="text-sm text-slate-500">

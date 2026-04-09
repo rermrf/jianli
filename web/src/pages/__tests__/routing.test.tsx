@@ -219,7 +219,9 @@ describe("routing smoke test", () => {
     });
     renderAtPath("/");
 
-    await user.click(screen.getAllByRole("button", { name: "导出 PDF" })[0]);
+    await user.click(
+      (await screen.findAllByRole("button", { name: "导出 PDF" }))[0],
+    );
 
     expect(await screen.findByText("打印预览")).toBeInTheDocument();
     const avatars = await screen.findAllByAltText("温庆京头像");
@@ -265,5 +267,98 @@ describe("routing smoke test", () => {
     expect(
       screen.queryByRole("button", { name: "导出 PDF" }),
     ).not.toBeInTheDocument();
+  });
+
+  it("hides export actions on protected pages when pdf export is disabled", async () => {
+    loginWithKey("resume-key");
+
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+
+      if (url === "/api/resume" && (!init || init.method === "GET")) {
+        return new Response(
+          JSON.stringify({
+            code: 0,
+            data: {
+              resume: defaultResume,
+              siteSettings: { allowPdfExport: false },
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      if (url === "/api/resume/drafts" && (!init || init.method === "GET")) {
+        return new Response(JSON.stringify({ code: 0, data: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      if (url === "/api/resume/drafts/8" && (!init || init.method === "GET")) {
+        return new Response(
+          JSON.stringify({
+            code: 0,
+            data: {
+              id: 8,
+              name: "面试前调整版",
+              note: "补充项目亮点",
+              data: defaultResume,
+              createdAt: "2026-04-06T10:00:00Z",
+              updatedAt: "2026-04-06T10:00:00Z",
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      if (url.includes("/api/visitors/stats?days=7")) {
+        return new Response(
+          JSON.stringify({
+            code: 0,
+            data: {
+              totalVisits: 128,
+              todayVisits: 23,
+              uniqueVisitors: 86,
+              averageDurationSeconds: 42,
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      if (url.includes("/api/visitors?days=7")) {
+        return new Response(JSON.stringify({ code: 0, data: [] }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ code: 0, data: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    const protectedPaths = ["/drafts", "/drafts/8", "/visitors"];
+
+    for (const path of protectedPaths) {
+      const view = renderAtPath(path);
+      await waitFor(() =>
+        expect(
+          screen.queryByRole("button", { name: "导出 PDF" }),
+        ).not.toBeInTheDocument(),
+      );
+      view.unmount();
+    }
   });
 });

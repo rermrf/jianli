@@ -5,9 +5,12 @@ import { AppShell } from "../components/layout/AppShell";
 import { TopNav } from "../components/layout/TopNav";
 import { ResumeDesktopLayout } from "../components/resume/ResumeDesktopLayout";
 import { ResumeMobileLayout } from "../components/resume/ResumeMobileLayout";
+import { useResumeDraft } from "../hooks/useResumeDraft";
 import { useResumeDraftDetail } from "../hooks/useResumeDraftDetail";
 
 export function DraftPreviewPage() {
+  const { loading: settingsLoading, siteSettings } = useResumeDraft();
+  const showPdfExport = !settingsLoading && siteSettings.allowPdfExport;
   const params = useParams();
   const draftID = params.id ? Number(params.id) : null;
   const { draft, error, loading, publishDraft } = useResumeDraftDetail(
@@ -17,7 +20,7 @@ export function DraftPreviewPage() {
   if (loading) {
     return (
       <AppShell contentClassName="space-y-6">
-        <TopNav />
+        <TopNav showPdfExport={showPdfExport} />
         <SectionCard className="text-sm text-slate-500">加载中...</SectionCard>
       </AppShell>
     );
@@ -26,7 +29,7 @@ export function DraftPreviewPage() {
   if (!draft || error) {
     return (
       <AppShell contentClassName="space-y-6">
-        <TopNav />
+        <TopNav showPdfExport={showPdfExport} />
         <SectionCard className="text-sm text-rose-600">
           {error ?? "草稿不存在"}
         </SectionCard>
@@ -36,7 +39,7 @@ export function DraftPreviewPage() {
 
   return (
     <AppShell contentClassName="space-y-6">
-      <TopNav />
+      <TopNav showPdfExport={showPdfExport} />
       <SectionCard className="space-y-3">
         <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
           <div className="space-y-1">

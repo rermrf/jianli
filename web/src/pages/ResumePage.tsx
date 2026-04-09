@@ -10,6 +10,7 @@ import { recordVisit, sendVisitDuration } from '../lib/visitors'
 
 export function ResumePage() {
   const { draft, loading, siteSettings } = useResumeDraft()
+  const showPdfExport = !loading && siteSettings.allowPdfExport
   const visitIDRef = useRef<number | null>(null)
   const visitStartRef = useRef<number | null>(null)
 
@@ -63,7 +64,7 @@ export function ResumePage() {
   if (loading) {
     return (
       <AppShell contentClassName="space-y-6">
-        <TopNav />
+        <TopNav showPdfExport={showPdfExport} />
         <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-[var(--shadow-card)]">
           加载中...
         </div>
@@ -73,10 +74,10 @@ export function ResumePage() {
 
   return (
     <AppShell contentClassName="space-y-6">
-      <TopNav showPdfExport={siteSettings.allowPdfExport} />
+      <TopNav showPdfExport={showPdfExport} />
       <ResumeMobileLayout resume={draft} />
       <ResumeDesktopLayout resume={draft} />
-      {siteSettings.allowPdfExport ? (
+      {showPdfExport ? (
         <div className="md:hidden">
           <Link to="/print">
             <Button className="w-full">导出 PDF</Button>

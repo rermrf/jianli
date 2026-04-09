@@ -9,6 +9,7 @@ import { updateSiteSettings } from "../lib/settings";
 
 export function SettingsPage() {
   const { loading, siteSettings, setSiteSettings } = useResumeDraft();
+  const showPdfExport = !loading && siteSettings.allowPdfExport;
   const [error, setError] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -37,7 +38,7 @@ export function SettingsPage() {
   if (loading) {
     return (
       <AppShell contentClassName="space-y-6">
-        <TopNav showPdfExport={siteSettings.allowPdfExport} />
+        <TopNav showPdfExport={showPdfExport} />
         <SectionCard className="text-sm text-slate-500">加载中...</SectionCard>
       </AppShell>
     );
@@ -45,7 +46,7 @@ export function SettingsPage() {
 
   return (
     <AppShell contentClassName="space-y-6">
-      <TopNav showPdfExport={siteSettings.allowPdfExport} />
+      <TopNav showPdfExport={showPdfExport} />
       <div>
         <h1 className="text-2xl font-semibold text-slate-900">设置</h1>
         <p className="mt-2 text-sm text-slate-500">
