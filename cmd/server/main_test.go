@@ -31,8 +31,10 @@ func TestNewRouterRegistersCoreRoutes(t *testing.T) {
 		codes  []int
 	}{
 		{method: http.MethodGet, path: "/api/resume", codes: []int{http.StatusOK}},
-		{method: http.MethodGet, path: "/api/resume/pdf", codes: []int{http.StatusInternalServerError, http.StatusOK}},
+		{method: http.MethodGet, path: "/api/resume/pdf", codes: []int{http.StatusForbidden, http.StatusInternalServerError, http.StatusOK}},
 		{method: http.MethodPost, path: "/api/auth/verify", codes: []int{http.StatusBadRequest, http.StatusUnauthorized, http.StatusOK}},
+		{method: http.MethodGet, path: "/api/settings", codes: []int{http.StatusUnauthorized, http.StatusOK}},
+		{method: http.MethodPut, path: "/api/settings", codes: []int{http.StatusUnauthorized, http.StatusBadRequest, http.StatusOK}},
 		{method: http.MethodPost, path: "/api/upload/avatar", codes: []int{http.StatusUnauthorized, http.StatusBadRequest, http.StatusOK}},
 		{method: http.MethodGet, path: "/api/visitors", codes: []int{http.StatusUnauthorized, http.StatusOK}},
 		{method: http.MethodGet, path: "/api/visitors/stats", codes: []int{http.StatusUnauthorized, http.StatusOK}},

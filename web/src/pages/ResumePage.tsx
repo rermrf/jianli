@@ -9,7 +9,7 @@ import { useResumeDraft } from '../hooks/useResumeDraft'
 import { recordVisit, sendVisitDuration } from '../lib/visitors'
 
 export function ResumePage() {
-  const { draft, loading } = useResumeDraft()
+  const { draft, loading, siteSettings } = useResumeDraft()
   const visitIDRef = useRef<number | null>(null)
   const visitStartRef = useRef<number | null>(null)
 
@@ -73,14 +73,16 @@ export function ResumePage() {
 
   return (
     <AppShell contentClassName="space-y-6">
-      <TopNav />
+      <TopNav showPdfExport={siteSettings.allowPdfExport} />
       <ResumeMobileLayout resume={draft} />
       <ResumeDesktopLayout resume={draft} />
-      <div className="md:hidden">
-        <Link to="/print">
-          <Button className="w-full">导出 PDF</Button>
-        </Link>
-      </div>
+      {siteSettings.allowPdfExport ? (
+        <div className="md:hidden">
+          <Link to="/print">
+            <Button className="w-full">导出 PDF</Button>
+          </Link>
+        </div>
+      ) : null}
     </AppShell>
   )
 }

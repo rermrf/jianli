@@ -524,4 +524,17 @@ describe("edit page", () => {
       expect(body.jobIntention.cities).toEqual(["上海", "深圳", "苏州"]);
     });
   });
+
+  it("does not render site settings in the edit page", async () => {
+    loginWithKey("resume-key");
+    mockResumeFetch();
+
+    renderEditPage();
+
+    await screen.findByLabelText("姓名");
+    expect(screen.queryByText("站点设置")).not.toBeInTheDocument();
+    expect(
+      screen.queryByLabelText("允许访客导出 PDF"),
+    ).not.toBeInTheDocument();
+  });
 });

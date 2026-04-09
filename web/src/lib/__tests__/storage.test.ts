@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+﻿import { afterEach, describe, expect, it, vi } from 'vitest'
 import { defaultResume } from '../../data/mockResume'
 import { loadResumeDraft, resetResumeDraft, saveResumeDraft } from '../storage'
 
@@ -8,15 +8,31 @@ describe('resume draft storage', () => {
     vi.restoreAllMocks()
   })
 
-  it('loads the resume from the backend API', async () => {
+  it('loads the resume and site settings from the backend API', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ code: 0, data: defaultResume }), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }),
+      new Response(
+        JSON.stringify({
+          code: 0,
+          data: {
+            resume: defaultResume,
+            siteSettings: {
+              allowPdfExport: false,
+            },
+          },
+        }),
+        {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      ),
     )
 
-    await expect(loadResumeDraft()).resolves.toEqual(defaultResume)
+    await expect(loadResumeDraft()).resolves.toEqual({
+      resume: defaultResume,
+      siteSettings: {
+        allowPdfExport: false,
+      },
+    })
   })
 
   it('saves the resume through the backend API', async () => {

@@ -6,9 +6,14 @@ const protectedNavItems = [
   { to: "/edit", label: "编辑" },
   { to: "/drafts", label: "草稿" },
   { to: "/visitors", label: "访客" },
+  { to: "/settings", label: "设置" },
 ];
 
-export function TopNav() {
+interface TopNavProps {
+  showPdfExport?: boolean;
+}
+
+export function TopNav({ showPdfExport = true }: TopNavProps) {
   const authed = isAuthenticated();
 
   return (
@@ -47,11 +52,15 @@ export function TopNav() {
             ))
           : null}
       </nav>
-      <Link to="/print">
-        <Button className="px-3 py-2 text-xs" variant="primary">
-          导出 PDF
-        </Button>
-      </Link>
+      {showPdfExport ? (
+        <Link to="/print">
+          <Button className="px-3 py-2 text-xs" variant="primary">
+            导出 PDF
+          </Button>
+        </Link>
+      ) : (
+        <div className="w-[88px]" aria-hidden="true" />
+      )}
     </header>
   );
 }

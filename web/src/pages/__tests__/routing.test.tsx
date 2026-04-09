@@ -113,6 +113,13 @@ describe("routing smoke test", () => {
     expect(await screen.findByText("管理后台")).toBeInTheDocument();
   });
 
+  it("redirects unauthenticated users from /settings to /login", async () => {
+    mockAppFetch();
+    renderAtPath("/settings");
+
+    expect(await screen.findByText("管理后台")).toBeInTheDocument();
+  });
+
   it("enters login page after triple-clicking the avatar within 1.5 seconds", async () => {
     const user = userEvent.setup();
     mockAppFetch();
@@ -146,7 +153,7 @@ describe("routing smoke test", () => {
     );
   });
 
-  it("shows 编辑, 草稿 and 访客 in nav when the user is authenticated", async () => {
+  it("shows 编辑, 草稿, 访客 and 设置 in nav when the user is authenticated", async () => {
     loginWithKey("resume-key");
     mockAppFetch();
     renderAtPath("/");
@@ -156,6 +163,11 @@ describe("routing smoke test", () => {
     expect(screen.getByText("编辑")).toBeInTheDocument();
     expect(screen.getByText("草稿")).toBeInTheDocument();
     expect(screen.getByText("访客")).toBeInTheDocument();
+    expect(screen.getByText("设置")).toBeInTheDocument();
+    expect(
+      screen.getByText("访客").compareDocumentPosition(screen.getByText("设置")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   it("renders uploaded avatar on the public resume page", async () => {
@@ -209,8 +221,49 @@ describe("routing smoke test", () => {
 
     await user.click(screen.getAllByRole("button", { name: "导出 PDF" })[0]);
 
-    expect(await screen.findByText("打印版简历")).toBeInTheDocument();
+    expect(await screen.findByText("打印预览")).toBeInTheDocument();
     const avatars = await screen.findAllByAltText("温庆京头像");
     expect(avatars[0]).toHaveAttribute("src", "/uploads/avatars/avatar-1.png");
+  });
+
+  it("hides export actions when pdf export is disabled", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input, init) => {
+      const url = String(input);
+
+      if (url === "/api/resume" && (!init || init.method === "GET")) {
+        return new Response(
+          JSON.stringify({
+            code: 0,
+            data: {
+              resume: defaultResume,
+              siteSettings: { allowPdfExport: false },
+            },
+          }),
+          {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+
+      if (url === "/api/visitors" && init?.method === "POST") {
+        return new Response(JSON.stringify({ code: 0, data: { id: 7 } }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      return new Response(JSON.stringify({ code: 0, data: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      });
+    });
+
+    renderAtPath("/");
+
+    await screen.findAllByText("温庆京");
+    expect(
+      screen.queryByRole("button", { name: "导出 PDF" }),
+    ).not.toBeInTheDocument();
   });
 });

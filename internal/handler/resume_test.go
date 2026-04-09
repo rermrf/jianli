@@ -1,4 +1,4 @@
-﻿package handler
+package handler
 
 import (
 	"context"
@@ -23,7 +23,7 @@ func (f fakePDFExporter) ExportResume(_ context.Context, _ json.RawMessage) ([]b
 	return f.content, nil
 }
 
-func setupResumeTestRouter(t *testing.T) *gin.Engine {
+func setupResumeTestRouter(t *testing.T) (*gin.Engine, *store.SiteSettingsStore) {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
 
@@ -37,7 +37,8 @@ func setupResumeTestRouter(t *testing.T) *gin.Engine {
 	}
 	t.Cleanup(func() { _ = sqlDB.Close() })
 
-	resumeHandler := NewResumeHandler(store.NewResumeStore(db), fakePDFExporter{content: []byte("%PDF-test")})
+	siteSettingsStore := store.NewSiteSettingsStore(db)
+	resumeHandler := NewResumeHandler(store.NewResumeStore(db), siteSettingsStore, fakePDFExporter{content: []byte("%PDF-test")})
 	router := gin.New()
 	router.GET("/api/resume", resumeHandler.Get)
 	router.GET("/api/resume/pdf", resumeHandler.ExportPDF)
@@ -45,11 +46,11 @@ func setupResumeTestRouter(t *testing.T) *gin.Engine {
 	protected.Use(middleware.Auth("resume-key"))
 	protected.PUT("/resume", resumeHandler.Update)
 
-	return router
+	return router, siteSettingsStore
 }
 
-func TestResumeHandlerGetReturnsEmptyResumeForNewDatabase(t *testing.T) {
-	router := setupResumeTestRouter(t)
+func TestResumeHandlerGetReturnsResumeAndSiteSettingsForNewDatabase(t *testing.T) {
+	router, _ := setupResumeTestRouter(t)
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/api/resume", nil)
 
@@ -60,20 +61,28 @@ func TestResumeHandlerGetReturnsEmptyResumeForNewDatabase(t *testing.T) {
 	}
 
 	var payload struct {
-		Data map[string]any `json:"data"`
+		Data struct {
+			Resume       map[string]any `json:"resume"`
+			SiteSettings struct {
+				AllowPDFExport bool `json:"allowPdfExport"`
+			} `json:"siteSettings"`
+		} `json:"data"`
 	}
 	if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("expected JSON response, got error: %v", err)
 	}
 
-	profile := payload.Data["profile"].(map[string]any)
+	profile := payload.Data.Resume["profile"].(map[string]any)
 	if profile["name"] != "" {
 		t.Fatalf("expected empty profile name, got %#v", profile["name"])
+	}
+	if !payload.Data.SiteSettings.AllowPDFExport {
+		t.Fatal("expected allowPdfExport to default to true")
 	}
 }
 
 func TestResumeHandlerUpdateRequiresAuthAndSavesData(t *testing.T) {
-	router := setupResumeTestRouter(t)
+	router, _ := setupResumeTestRouter(t)
 	updated := `{"profile":{"name":"测试后端"}}`
 
 	request := httptest.NewRequest(http.MethodPut, "/api/resume", strings.NewReader(updated))
@@ -91,20 +100,38 @@ func TestResumeHandlerUpdateRequiresAuthAndSavesData(t *testing.T) {
 	router.ServeHTTP(getRecorder, getRequest)
 
 	var payload struct {
-		Data map[string]any `json:"data"`
+		Data struct {
+			Resume map[string]any `json:"resume"`
+		} `json:"data"`
 	}
 	if err := json.Unmarshal(getRecorder.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("expected JSON response, got error: %v", err)
 	}
 
-	profile := payload.Data["profile"].(map[string]any)
+	profile := payload.Data.Resume["profile"].(map[string]any)
 	if profile["name"] != "测试后端" {
 		t.Fatalf("expected updated profile name 测试后端, got %#v", profile["name"])
 	}
 }
 
+func TestResumeHandlerExportPDFReturnsForbiddenWhenExportDisabled(t *testing.T) {
+	router, settingsStore := setupResumeTestRouter(t)
+	if err := settingsStore.Save(false); err != nil {
+		t.Fatalf("Save(false) returned error: %v", err)
+	}
+
+	recorder := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, "/api/resume/pdf", nil)
+
+	router.ServeHTTP(recorder, request)
+
+	if recorder.Code != http.StatusForbidden {
+		t.Fatalf("expected 403, got %d", recorder.Code)
+	}
+}
+
 func TestResumeHandlerExportPDFReturnsPDFResponse(t *testing.T) {
-	router := setupResumeTestRouter(t)
+	router, _ := setupResumeTestRouter(t)
 	recorder := httptest.NewRecorder()
 	request := httptest.NewRequest(http.MethodGet, "/api/resume/pdf", nil)
 

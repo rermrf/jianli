@@ -6,6 +6,7 @@ import { EditPage } from "../pages/EditPage";
 import { LoginPage } from "../pages/LoginPage";
 import { PrintPage } from "../pages/PrintPage";
 import { ResumePage } from "../pages/ResumePage";
+import { SettingsPage } from "../pages/SettingsPage";
 import { VisitorsPage } from "../pages/VisitorsPage";
 
 export function AppRouter() {
@@ -44,6 +45,14 @@ export function AppRouter() {
             </ProtectedRoute>
           }
           path="/visitors"
+        />
+        <Route
+          element={
+            <ProtectedRoute>
+              <SettingsPage />
+            </ProtectedRoute>
+          }
+          path="/settings"
         />
         <Route element={<LoginPage />} path="/login" />
         <Route element={<PrintPage />} path="/print" />

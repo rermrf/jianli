@@ -1,11 +1,17 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import type { Dispatch, SetStateAction } from 'react'
 import { defaultResume } from '../data/mockResume'
 import { resetResumeDraft, loadResumeDraft, saveResumeDraft } from '../lib/storage'
 import type { ResumeData } from '../types/resume'
+import type { SiteSettings } from '../types/siteSettings'
+
+const defaultSiteSettings: SiteSettings = {
+  allowPdfExport: true,
+}
 
 export function useResumeDraft() {
   const [draft, setDraft] = useState<ResumeData>(defaultResume)
+  const [siteSettings, setSiteSettings] = useState<SiteSettings>(defaultSiteSettings)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -16,12 +22,14 @@ export function useResumeDraft() {
       try {
         const nextDraft = await loadResumeDraft()
         if (active) {
-          setDraft(nextDraft)
+          setDraft(nextDraft.resume)
+          setSiteSettings(nextDraft.siteSettings)
           setError(null)
         }
       } catch (loadError) {
         if (active) {
           setDraft(defaultResume)
+          setSiteSettings(defaultSiteSettings)
           setError(loadError instanceof Error ? loadError.message : '加载失败')
         }
       } finally {
@@ -48,14 +56,17 @@ export function useResumeDraft() {
   function restoreDefaultDraft() {
     resetResumeDraft()
     setDraft(defaultResume)
+    setSiteSettings(defaultSiteSettings)
   }
 
   return {
     draft,
     error,
     loading,
-    setDraft: setDraft as Dispatch<SetStateAction<ResumeData>>,
-    saveDraft,
     restoreDefaultDraft,
+    saveDraft,
+    setDraft: setDraft as Dispatch<SetStateAction<ResumeData>>,
+    setSiteSettings,
+    siteSettings,
   }
 }

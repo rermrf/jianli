@@ -101,4 +101,40 @@ describe('print page', () => {
     expect(removeChild).toHaveBeenCalled()
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:resume-pdf')
   })
+
+  it('hides the download button when pdf export is disabled', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+
+      if (url === '/api/resume') {
+        return new Response(
+          JSON.stringify({
+            code: 0,
+            data: {
+              resume: defaultResume,
+              siteSettings: { allowPdfExport: false },
+            },
+          }),
+          {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        )
+      }
+
+      return new Response(JSON.stringify({ code: 0, data: {} }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    render(
+      <MemoryRouter>
+        <PrintPage />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText(defaultResume.profile.name)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: '下载 PDF' })).not.toBeInTheDocument()
+  })
 })

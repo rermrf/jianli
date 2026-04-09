@@ -4,7 +4,7 @@ import { PrintResume } from '../components/resume/PrintResume'
 import { useResumeDraft } from '../hooks/useResumeDraft'
 
 export function PrintPage() {
-  const { draft, loading } = useResumeDraft()
+  const { draft, loading, siteSettings } = useResumeDraft()
   const [downloading, setDownloading] = useState(false)
   const [error, setError] = useState('')
 
@@ -45,9 +45,11 @@ export function PrintPage() {
           <h1 className="text-xl font-semibold text-slate-900">打印预览</h1>
           <p className="mt-2 text-sm text-slate-500">确认版式无误后可直接下载 PDF。</p>
         </div>
-        <Button onClick={handleDownloadPDF} type="button">
-          {downloading ? '下载中...' : '下载 PDF'}
-        </Button>
+        {siteSettings.allowPdfExport ? (
+          <Button onClick={handleDownloadPDF} type="button">
+            {downloading ? '下载中...' : '下载 PDF'}
+          </Button>
+        ) : null}
       </div>
       {error ? (
         <div className="mx-auto mb-4 max-w-[794px] rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600 print:hidden">

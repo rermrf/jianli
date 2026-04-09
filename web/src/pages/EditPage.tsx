@@ -78,7 +78,7 @@ function moveArrayItem<T>(items: T[], fromIndex: number, toIndex: number) {
 }
 
 export function EditPage() {
-  const { draft, loading, saveDraft, setDraft } = useResumeDraft();
+  const { draft, loading, saveDraft, setDraft, siteSettings } = useResumeDraft();
   const [draftDialogOpen, setDraftDialogOpen] = useState(false);
   const [draftError, setDraftError] = useState<string | null>(null);
   const [draftSaving, setDraftSaving] = useState(false);
@@ -218,7 +218,7 @@ export function EditPage() {
   if (loading) {
     return (
       <AppShell contentClassName="space-y-6">
-        <TopNav />
+        <TopNav showPdfExport={siteSettings.allowPdfExport} />
         <SectionCard className="text-sm text-slate-500">加载中...</SectionCard>
       </AppShell>
     );
@@ -226,7 +226,7 @@ export function EditPage() {
 
   return (
     <AppShell contentClassName="space-y-6">
-      <TopNav />
+      <TopNav showPdfExport={siteSettings.allowPdfExport} />
       <div className="flex items-center justify-between gap-4 md:hidden">
         <Button variant="ghost">取消</Button>
         <h1 className="text-lg font-semibold text-slate-900">编辑简历</h1>

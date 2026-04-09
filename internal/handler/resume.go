@@ -1,4 +1,4 @@
-﻿package handler
+package handler
 
 import (
 	"context"
@@ -16,12 +16,18 @@ type PDFExporter interface {
 }
 
 type ResumeHandler struct {
-	exporter PDFExporter
-	store    *store.ResumeStore
+	exporter      PDFExporter
+	store         *store.ResumeStore
+	settingsStore *store.SiteSettingsStore
 }
 
-func NewResumeHandler(store *store.ResumeStore, exporter PDFExporter) *ResumeHandler {
-	return &ResumeHandler{exporter: exporter, store: store}
+type publicResumePayload struct {
+	Resume       any             `json:"resume"`
+	SiteSettings settingsPayload `json:"siteSettings"`
+}
+
+func NewResumeHandler(store *store.ResumeStore, settingsStore *store.SiteSettingsStore, exporter PDFExporter) *ResumeHandler {
+	return &ResumeHandler{exporter: exporter, store: store, settingsStore: settingsStore}
 }
 
 func (h *ResumeHandler) Get(c *gin.Context) {
@@ -31,13 +37,22 @@ func (h *ResumeHandler) Get(c *gin.Context) {
 		return
 	}
 
+	settings, err := h.settingsStore.Get()
+	if err != nil {
+		httpapi.Error(c, http.StatusInternalServerError, 50000, "failed to load settings")
+		return
+	}
+
 	var payload any
 	if err := json.Unmarshal(resume, &payload); err != nil {
 		httpapi.Error(c, http.StatusInternalServerError, 50000, "failed to decode resume")
 		return
 	}
 
-	httpapi.JSON(c, http.StatusOK, payload)
+	httpapi.JSON(c, http.StatusOK, publicResumePayload{
+		Resume:       payload,
+		SiteSettings: settingsPayload{AllowPDFExport: settings.AllowPDFExport},
+	})
 }
 
 func (h *ResumeHandler) Update(c *gin.Context) {
@@ -62,6 +77,16 @@ func (h *ResumeHandler) Update(c *gin.Context) {
 }
 
 func (h *ResumeHandler) ExportPDF(c *gin.Context) {
+	settings, err := h.settingsStore.Get()
+	if err != nil {
+		httpapi.Error(c, http.StatusInternalServerError, 50000, "failed to load settings")
+		return
+	}
+	if !settings.AllowPDFExport {
+		httpapi.Error(c, http.StatusForbidden, 40301, "pdf export is disabled")
+		return
+	}
+
 	resume, err := h.store.Get()
 	if err != nil {
 		httpapi.Error(c, http.StatusInternalServerError, 50000, "failed to load resume")
