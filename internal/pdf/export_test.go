@@ -79,13 +79,18 @@ func TestBuildResumeViewIncludesAvatarEducationAndAwards(t *testing.T) {
 		t.Fatalf("expected rendered html to inline avatar data url, got %q", html)
 	}
 
+	if strings.Contains(html, "打印版简历") {
+		t.Fatal("expected rendered html to avoid a print-preview title")
+	}
+
+	if strings.Contains(html, "个人基本信息") {
+		t.Fatal("expected rendered html to avoid a standalone personal info section")
+	}
+
 	for _, expected := range []string{
-		"个人基本信息",
-		"25岁",
-		"男",
-		"本科",
-		"0.9年",
-		"江西赣州",
+		"温庆京",
+		"Golang 后端工程师",
+		"25岁 / 男 / 本科 / 0.9年 / 籍贯：江西赣州",
 		"教育经历",
 		"江西财经大学现代经济管理学院",
 		"2023.09 - 2025.07",

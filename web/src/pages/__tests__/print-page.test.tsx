@@ -10,7 +10,7 @@ describe('print page', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders profile facts, education, and awards from the published resume', async () => {
+  it('renders profile facts in the header plus education and awards from the published resume', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
       const url = String(input)
 
@@ -34,11 +34,9 @@ describe('print page', () => {
     )
 
     expect(await screen.findByText(defaultResume.profile.name)).toBeInTheDocument()
-    expect(screen.getByText(String(defaultResume.profile.age))).toBeInTheDocument()
-    expect(screen.getByText(defaultResume.profile.gender)).toBeInTheDocument()
-    expect(screen.getByText(defaultResume.profile.education)).toBeInTheDocument()
-    expect(screen.getByText(defaultResume.profile.experience)).toBeInTheDocument()
-    expect(screen.getByText(defaultResume.profile.hometown)).toBeInTheDocument()
+    expect(screen.queryByText('打印版简历')).not.toBeInTheDocument()
+    expect(screen.queryByText('个人基本信息')).not.toBeInTheDocument()
+    expect(screen.getByText('25岁 / 男 / 本科 / 0.9年 / 籍贯：江西赣州')).toBeInTheDocument()
     expect(screen.getByText('教育经历')).toBeInTheDocument()
     expect(screen.getByText(defaultResume.education[0].school)).toBeInTheDocument()
     expect(screen.getByText('荣誉奖项')).toBeInTheDocument()
@@ -87,7 +85,8 @@ describe('print page', () => {
       </MemoryRouter>,
     )
 
-    expect(await screen.findByText('打印版简历')).toBeInTheDocument()
+    expect(await screen.findByText(defaultResume.profile.name)).toBeInTheDocument()
+    expect(screen.queryByText('打印版简历')).not.toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: '下载 PDF' }))
 
     await waitFor(() =>

@@ -6,11 +6,11 @@ interface PrintResumeProps {
 
 export function PrintResume({ resume }: PrintResumeProps) {
   const profileFacts = [
-    `${resume.profile.age}`,
+    `${resume.profile.age}岁`,
     resume.profile.gender,
     resume.profile.education,
     resume.profile.experience,
-    resume.profile.hometown,
+    `籍贯：${resume.profile.hometown}`,
   ].filter(Boolean)
 
   return (
@@ -28,13 +28,13 @@ export function PrintResume({ resume }: PrintResumeProps) {
               👤
             </div>
           )}
-          <div>
-            <h1 className="text-3xl font-semibold">打印版简历</h1>
-            <h2 className="mt-3 text-2xl font-semibold">{resume.profile.name}</h2>
-            <p className="mt-2 text-sm text-slate-500">{resume.profile.title}</p>
-            <p className="mt-3 text-sm text-slate-500">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-3xl font-semibold tracking-[0.02em]">{resume.profile.name}</h1>
+            <p className="mt-2 text-base font-medium text-slate-700">{resume.profile.title}</p>
+            <p className="mt-3 text-sm leading-6 text-slate-500">
               {`所在地：${resume.profile.location}`} · {`手机号：${resume.profile.phone}`} · {`邮箱：${resume.profile.email}`}
             </p>
+            <p className="mt-2 text-sm leading-6 text-slate-500">{profileFacts.join(' / ')}</p>
             {resume.jobIntention.cities.length > 0 ? (
               <p className="mt-2 text-sm text-slate-500">
                 {`意向城市：${resume.jobIntention.cities.join(' / ')}`}
@@ -43,17 +43,6 @@ export function PrintResume({ resume }: PrintResumeProps) {
           </div>
         </div>
       </header>
-
-      <section className="space-y-3">
-        <h3 className="text-lg font-semibold">个人基本信息</h3>
-        <div className="flex flex-wrap gap-2 text-sm text-slate-600">
-          {profileFacts.map((item) => (
-            <span key={item} className="rounded-full bg-slate-100 px-3 py-1">
-              {item}
-            </span>
-          ))}
-        </div>
-      </section>
 
       <section className="space-y-3">
         <h3 className="text-lg font-semibold">个人技能</h3>

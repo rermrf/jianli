@@ -187,13 +187,15 @@ func renderResumeHTML(view resumeView) (string, error) {
 <meta charset="utf-8" />
 <style>
 body { font-family: "Inter", "Noto Sans CJK SC", "WenQuanYi Micro Hei", "PingFang SC", "Microsoft YaHei", Arial, sans-serif; padding: 32px; color: #1a1a1a; }
-h1 { margin: 0 0 8px; font-size: 28px; }
+h1 { margin: 0; font-size: 30px; letter-spacing: 0.02em; }
 h2 { margin: 28px 0 12px; font-size: 18px; }
 p, li { font-size: 14px; line-height: 1.6; }
 ul { padding-left: 18px; }
 img.avatar { width: 84px; height: 84px; border-radius: 999px; object-fit: cover; }
 .header { display: flex; gap: 20px; align-items: flex-start; }
-.meta { color: #666; margin-bottom: 16px; }
+.role { margin: 8px 0 0; font-size: 16px; font-weight: 600; color: #334155; }
+.meta { color: #666; margin: 12px 0 0; }
+.profile-facts { margin: 8px 0 0; color: #666; }
 .block { margin-bottom: 16px; }
 </style>
 </head>
@@ -202,11 +204,11 @@ img.avatar { width: 84px; height: 84px; border-radius: 999px; object-fit: cover;
 {{ if .Profile.AvatarDataURL }}<img class="avatar" src="{{ .Profile.AvatarDataURL }}" />{{ end }}
 <div>
 <h1>{{ .Profile.Name }}</h1>
-<p class="meta">{{ .Profile.Title }} | 所在地：{{ .Profile.Location }} | 手机号：{{ .Profile.Phone }} | 邮箱：{{ .Profile.Email }}</p>
+<p class="role">{{ .Profile.Title }}</p>
+<p class="meta">所在地：{{ .Profile.Location }} | 手机号：{{ .Profile.Phone }} | 邮箱：{{ .Profile.Email }}</p>
+<p class="profile-facts">{{ .Profile.Age }}岁 / {{ .Profile.Gender }} / {{ .Profile.Education }} / {{ .Profile.Experience }} / 籍贯：{{ .Profile.Hometown }}</p>
 </div>
 </div>
-<h2>个人基本信息</h2>
-<p>{{ .Profile.Age }}岁 / {{ .Profile.Gender }} / {{ .Profile.Education }} / {{ .Profile.Experience }} / 籍贯：{{ .Profile.Hometown }}</p>
 <h2>技能</h2>
 <p>{{ range $index, $skill := .Skills }}{{ if $index }} / {{ end }}{{ $skill }}{{ end }}</p>
 <h2>工作经历</h2>
