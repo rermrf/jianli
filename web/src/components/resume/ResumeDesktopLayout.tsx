@@ -40,6 +40,7 @@ export function ResumeDesktopLayout({ resume }: ResumeDesktopLayoutProps) {
         <TimelineSection
           items={resume.projects.map((item) => ({
             title: item.name,
+            titleHref: item.url,
             meta: `${item.startDate} - ${item.endDate}`,
             bullets: item.description,
           }))}

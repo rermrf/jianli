@@ -283,6 +283,32 @@ describe("edit page", () => {
     });
   });
 
+  it("persists project url through the main resume api", async () => {
+    loginWithKey("resume-key");
+    const fetchSpy = mockResumeFetch();
+
+    const user = userEvent.setup();
+    renderEditPage();
+
+    const projectUrlInput = (await screen.findAllByLabelText("项目地址"))[0];
+    await user.clear(projectUrlInput);
+    await user.type(projectUrlInput, "https://github.com/example/ai-gateway");
+    await user.click(screen.getAllByRole("button", { name: "保存主简历" })[0]);
+
+    await waitFor(() => {
+      const saveCall = fetchSpy.mock.calls.find(
+        ([url, init]) =>
+          String(url) === "/api/resume" && init?.method === "PUT",
+      );
+      expect(saveCall).toBeDefined();
+
+      const body = JSON.parse(String(saveCall?.[1]?.body));
+      expect(body.projects[0].url).toBe(
+        "https://github.com/example/ai-gateway",
+      );
+    });
+  });
+
   it("saves edited resume data through the backend API", async () => {
     loginWithKey("resume-key");
     const fetchSpy = mockResumeFetch();

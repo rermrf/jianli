@@ -23,6 +23,7 @@ export function ResumeMobileLayout({ resume }: ResumeMobileLayoutProps) {
       <TimelineSection
         items={resume.projects.map((item) => ({
           title: item.name,
+          titleHref: item.url,
           meta: `${item.startDate} - ${item.endDate}`,
           bullets: item.description,
         }))}

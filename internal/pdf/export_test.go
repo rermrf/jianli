@@ -8,7 +8,7 @@ import (
 	"testing"
 )
 
-func TestBuildResumeViewIncludesAvatarEducationAndAwards(t *testing.T) {
+func TestBuildResumeViewIncludesAvatarEducationAwardsAndProjectURL(t *testing.T) {
 	uploadRoot := filepath.Join(t.TempDir(), "uploads")
 	avatarDir := filepath.Join(uploadRoot, "avatars")
 	if err := os.MkdirAll(avatarDir, 0o755); err != nil {
@@ -33,31 +33,37 @@ func TestBuildResumeViewIncludesAvatarEducationAndAwards(t *testing.T) {
 
 	resume := json.RawMessage(`{
 		"profile": {
-			"name": "温庆京",
-			"title": "Golang 后端工程师",
+			"name": "Test User",
+			"title": "Backend Engineer",
 			"age": 25,
 			"gender": "男",
 			"education": "本科",
-			"experience": "0.9年",
-			"location": "浙江杭州",
-			"hometown": "江西赣州",
-			"phone": "17620096266",
-			"email": "3219431643@qq.com",
+			"experience": "1年",
+			"location": "Hangzhou",
+			"hometown": "Ganzhou",
+			"phone": "123456789",
+			"email": "test@example.com",
 			"avatarUrl": "/uploads/avatars/avatar.png"
 		},
 		"skills": ["Go", "MySQL"],
 		"workExperience": [],
-		"projects": [],
+		"projects": [{
+			"name": "AI Gateway",
+			"startDate": "2025.12",
+			"endDate": "2026.01",
+			"description": ["Unified model gateway"],
+			"url": "https://github.com/example/ai-gateway"
+		}],
 		"education": [{
-			"school": "江西财经大学现代经济管理学院",
-			"major": "计算机科学与技术",
-			"degree": "本科",
+			"school": "JXUFE",
+			"major": "Computer Science",
+			"degree": "Bachelor",
 			"startDate": "2023.09",
 			"endDate": "2025.07"
 		}],
 		"awards": [{
 			"date": "2022.09",
-			"title": "国家励志奖学金"
+			"title": "Scholarship"
 		}]
 	}`)
 
@@ -75,30 +81,30 @@ func TestBuildResumeViewIncludesAvatarEducationAndAwards(t *testing.T) {
 		t.Fatalf("expected avatar data url in view, got %q", view.Profile.AvatarDataURL)
 	}
 
-	if !strings.Contains(html, "data:image/") {
-		t.Fatalf("expected rendered html to inline avatar data url, got %q", html)
+	if len(view.Projects) != 1 {
+		t.Fatalf("expected 1 project, got %d", len(view.Projects))
 	}
 
-	if strings.Contains(html, "打印版简历") {
-		t.Fatal("expected rendered html to avoid a print-preview title")
-	}
-
-	if strings.Contains(html, "个人基本信息") {
-		t.Fatal("expected rendered html to avoid a standalone personal info section")
+	if view.Projects[0].URL != "https://github.com/example/ai-gateway" {
+		t.Fatalf("expected project url to round-trip, got %q", view.Projects[0].URL)
 	}
 
 	for _, expected := range []string{
-		"温庆京",
-		"Golang 后端工程师",
-		"25岁 / 男 / 本科 / 0.9年 / 籍贯：江西赣州",
-		"教育经历",
-		"江西财经大学现代经济管理学院",
-		"2023.09 - 2025.07",
-		"荣誉奖项",
-		"国家励志奖学金",
+		"data:image/",
+		"Test User",
+		"Backend Engineer",
+		"JXUFE",
+		"Scholarship",
+		"AI Gateway",
 	} {
 		if !strings.Contains(html, expected) {
 			t.Fatalf("expected rendered html to include %q", expected)
+		}
+	}
+
+	for _, unexpected := range []string{"print preview", "personal info"} {
+		if strings.Contains(strings.ToLower(html), unexpected) {
+			t.Fatalf("expected rendered html to avoid %q", unexpected)
 		}
 	}
 }

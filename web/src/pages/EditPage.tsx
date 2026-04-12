@@ -40,6 +40,7 @@ function createEmptyProject(): ProjectExperience {
     startDate: "",
     endDate: "",
     description: [""],
+    url: "",
   };
 }
 
@@ -180,6 +181,10 @@ export function EditPage() {
         ...draft.jobIntention,
         cities: parseDesiredCities(desiredCitiesInput),
       },
+      projects: draft.projects.map((item) => ({
+        ...item,
+        url: item.url?.trim() || undefined,
+      })),
     };
   }
 
@@ -674,6 +679,13 @@ export function EditPage() {
                       updateProject(index, { ...item, name: value })
                     }
                     value={item.name}
+                  />
+                  <FieldInput
+                    label="项目地址"
+                    onChange={(value) =>
+                      updateProject(index, { ...item, url: value })
+                    }
+                    value={item.url ?? ""}
                   />
                   <FieldInput
                     label="开始时间"

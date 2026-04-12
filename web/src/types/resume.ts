@@ -39,6 +39,7 @@ export interface ProjectExperience {
   startDate: string
   endDate: string
   description: string[]
+  url?: string
 }
 
 export interface Award {

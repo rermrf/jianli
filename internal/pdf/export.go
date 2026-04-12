@@ -46,6 +46,7 @@ type resumeView struct {
 		EndDate     string   `json:"endDate"`
 		Name        string   `json:"name"`
 		StartDate   string   `json:"startDate"`
+		URL         string   `json:"url"`
 	} `json:"projects"`
 	Skills         []string `json:"skills"`
 	WorkExperience []struct {

@@ -47,6 +47,7 @@ export const defaultResume: ResumeData = {
       name: 'AI Gateway - LLM 统一网关',
       startDate: '2025.12',
       endDate: '2026.01',
+      url: 'https://github.com/example/ai-gateway',
       description: [
         '封装多模型协议差异，统一 OpenAI 与 Anthropic 调用方式。',
         '设计鉴权、计费与路由层能力，支撑多租户接入。',

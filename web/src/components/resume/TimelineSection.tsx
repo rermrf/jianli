@@ -4,6 +4,7 @@ interface TimelineItem {
   bullets?: string[]
   meta?: string
   title: string
+  titleHref?: string
 }
 
 interface TimelineSectionProps {
@@ -25,7 +26,18 @@ export function TimelineSection({ items, title }: TimelineSectionProps) {
             className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
           >
             <div className="flex flex-col gap-1 md:flex-row md:items-start md:justify-between">
-              <h3 className="text-sm font-semibold text-slate-900">{item.title}</h3>
+              {item.titleHref ? (
+                <a
+                  className="text-sm font-semibold text-brand-600 hover:text-brand-700 hover:underline"
+                  href={item.titleHref}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  {item.title}
+                </a>
+              ) : (
+                <h3 className="text-sm font-semibold text-slate-900">{item.title}</h3>
+              )}
               {item.meta ? (
                 <p className="text-xs text-slate-400 md:text-sm">{item.meta}</p>
               ) : null}
