@@ -120,12 +120,14 @@
 
 **品牌色用量**
 
+**颜色限定**：仅使用 `web/src/index.css` 中已定义的 brand stop（`brand-50 / 100 / 500 / 600`）。不使用 `brand-300 / 400 / 700` 等未定义 stop（这些类名在当前 Tailwind 配置下会静默失效）。
+
 | 位置 | 色值 |
 |---|---|
 | 章节标题左侧竖条 | `brand-500` |
 | 项目链接标题 | `brand-600` |
-| 描述列表小圆点 | `brand-400` |
-| 其他文字、分隔线、日期 | `slate-900 / slate-700 / slate-500 / slate-200 / slate-400` |
+| 描述列表小圆点 | `brand-500` |
+| 其他文字、分隔线、日期 | `slate-900 / slate-700 / slate-500 / slate-400 / slate-200` |
 
 **工具栏**
 
@@ -133,7 +135,14 @@
 
 **空数据处理**
 
-- 章节内容为空时（如 `awards` 数组为空），整个章节连标题一起不渲染，避免出现"荣誉奖项"标题但下方为空。
+- 章节内容为空时（数组长度为 0），整个章节连同标题一起不渲染，避免出现"荣誉奖项"标题但下方为空的尴尬。
+- 判据：
+  - `skills.length === 0` → 隐藏「个人技能」章节
+  - `workExperience.length === 0` → 隐藏「工作经历」章节
+  - `projects.length === 0` → 隐藏「项目经历」章节
+  - `education.length === 0` → 隐藏「教育经历」章节
+  - `awards.length === 0` → 隐藏「荣誉奖项」章节
+- 个人信息（Header）始终显示。
 
 ## 智能分页
 
@@ -191,7 +200,7 @@ func (e Exporter) ExportResume(ctx context.Context) ([]byte, error) {
     defer cancelB()
 
     var pdfBytes []byte
-    url := fmt.Sprintf("http://127.0.0.1:%s/print?pdfMode=1", e.port)
+    url := fmt.Sprintf("http://127.0.0.1:%s/print", e.port)
 
     err = chromedp.Run(browserCtx,
         chromedp.Navigate(url),
@@ -220,8 +229,7 @@ func (e Exporter) ExportResume(ctx context.Context) ([]byte, error) {
 
 - **`PreferCSSPageSize(true)` + 后端边距设 0**：让 `@page { margin: 12mm 14mm }` 生效，由 CSS 单点控制边距，避免后端和 CSS 各设一份导致漂移。
 - **`Poll(window.__printReady === true)`**：等 React fetch 完数据、DOM 渲染稳定、图片加载完成后才打印。
-- **超时 10 秒**：避免后端 `/api/resume` 抖动时无限挂起。
-- **`?pdfMode=1`**：仅作语义信号，目前前端不强依赖（print CSS 已能区分），保留扩展位。
+- **超时 10 秒**：避免后端 `/api/resume` 抖动时无限挂起。超时错误从 handler 透出为 504 Gateway Timeout；其他 chromedp 错误返回 500。
 
 ### React 端的 ready 信号
 
@@ -274,8 +282,9 @@ resumeHandler := handler.NewResumeHandler(
 |---|---|
 | `internal/pdf/export.go` | 删除 `resumeView` 结构体、`buildResumeView`、`resolveAvatarDataURL`、`renderResumeHTML`；重写 `Exporter` 与 `ExportResume` |
 | `internal/pdf/export_test.go` | 重写：基于 `httptest.Server` 模拟 `/print` 返回最小占位 HTML，跑 chromedp 拉 PDF |
-| `internal/handler/resume.go` | `ExportPDF` 不再取 resume；调用 `ExportResume(ctx)` |
-| `internal/handler/resume_test.go` | 跟随新 PDFExporter 接口调整 mock |
+| `internal/handler/resume.go` | 修改 `PDFExporter` 接口（去掉 `resume` 参数）；`ExportPDF` 不再取 resume；调用 `ExportResume(ctx)` |
+| `internal/handler/resume_test.go` | `fakePDFExporter.ExportResume` 签名跟随接口调整 |
+| `internal/handler/resume_draft_test.go` | `fakeDraftPDFExporter.ExportResume` 签名跟随接口调整 |
 | `cmd/server/main.go` | `pdf.NewExporter(cfg.BrowserPath, cfg.Port)` |
 | `web/src/pages/PrintPage.tsx` | 工具栏样式微调；引入 `__printReady` 信号 |
 | `web/src/components/resume/PrintResume.tsx` | **完全重写**：新视觉、章节顺序、`print-item` / `print-section-title` 类、空数据隐藏、品牌色点缀、`@media print` + `@page` 块 |
