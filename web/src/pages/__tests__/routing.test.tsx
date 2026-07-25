@@ -81,15 +81,18 @@ describe("routing smoke test", () => {
     vi.restoreAllMocks();
   });
 
-  it("shows only 简历 in nav when the user is not authenticated", async () => {
+  it("keeps the public resume free of admin nav when unauthenticated", async () => {
     mockAppFetch();
     renderAtPath("/");
 
     await screen.findAllByText("温庆京");
-    expect(screen.getByText("简历")).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("heading", { name: "项目经历" }).length,
+    ).toBeGreaterThan(0);
     expect(screen.queryByText("编辑")).not.toBeInTheDocument();
     expect(screen.queryByText("草稿")).not.toBeInTheDocument();
     expect(screen.queryByText("访客")).not.toBeInTheDocument();
+    expect(screen.queryByText("设置")).not.toBeInTheDocument();
   });
 
   it("redirects unauthenticated users from /edit to /login", async () => {
@@ -153,12 +156,12 @@ describe("routing smoke test", () => {
     );
   });
 
-  it("shows 编辑, 草稿, 访客 and 设置 in nav when the user is authenticated", async () => {
+  it("shows 编辑, 草稿, 访客 and 设置 in nav on protected pages when authenticated", async () => {
     loginWithKey("resume-key");
     mockAppFetch();
-    renderAtPath("/");
+    renderAtPath("/edit");
 
-    await screen.findAllByText("温庆京");
+    expect(await screen.findByLabelText("姓名")).toBeInTheDocument();
     expect(screen.getByText("简历")).toBeInTheDocument();
     expect(screen.getByText("编辑")).toBeInTheDocument();
     expect(screen.getByText("草稿")).toBeInTheDocument();
@@ -168,6 +171,21 @@ describe("routing smoke test", () => {
       screen.getByText("访客").compareDocumentPosition(screen.getByText("设置")) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it("does not show admin nav on the public resume even when authenticated", async () => {
+    loginWithKey("resume-key");
+    mockAppFetch();
+    renderAtPath("/");
+
+    await screen.findAllByText("温庆京");
+    expect(
+      screen.getAllByRole("heading", { name: "项目经历" }).length,
+    ).toBeGreaterThan(0);
+    expect(screen.queryByText("编辑")).not.toBeInTheDocument();
+    expect(screen.queryByText("草稿")).not.toBeInTheDocument();
+    expect(screen.queryByText("访客")).not.toBeInTheDocument();
+    expect(screen.queryByText("设置")).not.toBeInTheDocument();
   });
 
   it("renders uploaded avatar on the public resume page", async () => {
@@ -220,7 +238,7 @@ describe("routing smoke test", () => {
     renderAtPath("/");
 
     await user.click(
-      (await screen.findAllByRole("button", { name: "导出 PDF" }))[0],
+      (await screen.findAllByRole("link", { name: "导出 PDF" }))[0],
     );
 
     expect(await screen.findByText("打印预览")).toBeInTheDocument();
@@ -265,7 +283,7 @@ describe("routing smoke test", () => {
 
     await screen.findAllByText("温庆京");
     expect(
-      screen.queryByRole("button", { name: "导出 PDF" }),
+      screen.queryByRole("link", { name: "导出 PDF" }),
     ).not.toBeInTheDocument();
   });
 
