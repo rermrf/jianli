@@ -1,12 +1,57 @@
-﻿import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '../components/common/Button'
 import { PrintResume } from '../components/resume/PrintResume'
 import { useResumeDraft } from '../hooks/useResumeDraft'
+import { useVisitorTracking } from '../hooks/useVisitorTracking'
+import { markPDFExported, readVisitorID } from '../lib/visitors'
+
+declare global {
+  interface Window {
+    /**
+     * Sentinel set by PrintPage once the resume data and any inline images
+     * (e.g. avatar) have finished loading. The backend chromedp PDF exporter
+     * polls for this flag before invoking PrintToPDF.
+     */
+    __printReady?: boolean
+  }
+}
 
 export function PrintPage() {
   const { draft, loading, siteSettings } = useResumeDraft()
   const [downloading, setDownloading] = useState(false)
   const [error, setError] = useState('')
+
+  // Track this page view too (the visit may have started on /; the hook
+  // reuses the existing visitorID + start time from sessionStorage).
+  useVisitorTracking(!loading)
+
+  useEffect(() => {
+    if (loading) return
+
+    let cancelled = false
+
+    const images = Array.from(document.images)
+    const allImagesLoaded = Promise.all(
+      images.map((img) =>
+        img.complete
+          ? Promise.resolve()
+          : new Promise<void>((resolve) => {
+              img.addEventListener('load', () => resolve(), { once: true })
+              img.addEventListener('error', () => resolve(), { once: true })
+            }),
+      ),
+    )
+
+    void allImagesLoaded.then(() => {
+      if (!cancelled) {
+        window.__printReady = true
+      }
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [loading])
 
   async function handleDownloadPDF() {
     setDownloading(true)
@@ -27,6 +72,14 @@ export function PrintPage() {
       link.click()
       document.body.removeChild(link)
       URL.revokeObjectURL(objectUrl)
+
+      // Best-effort link this PDF download to the visit row. If the user
+      // came directly to /print without recording a visit, readVisitorID
+      // returns null and the column stays "—" for that visit.
+      const visitorID = readVisitorID()
+      if (visitorID !== null) {
+        markPDFExported(visitorID)
+      }
     } catch {
       setError('PDF 下载失败，请稍后重试')
     } finally {
@@ -39,8 +92,8 @@ export function PrintPage() {
   }
 
   return (
-    <main className="min-h-screen bg-white px-4 py-6 text-slate-900 md:px-6 md:py-10 print:px-0 print:py-0">
-      <div className="mx-auto mb-6 flex max-w-[794px] items-center justify-between gap-4 print:hidden">
+    <main className="min-h-screen bg-slate-50 px-4 py-6 text-slate-900 md:px-6 md:py-10 print:bg-white print:px-0 print:py-0">
+      <div className="mx-auto mb-6 flex max-w-[210mm] items-center justify-between gap-4 print:hidden">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">打印预览</h1>
           <p className="mt-2 text-sm text-slate-500">确认版式无误后可直接下载 PDF。</p>
@@ -52,7 +105,7 @@ export function PrintPage() {
         ) : null}
       </div>
       {error ? (
-        <div className="mx-auto mb-4 max-w-[794px] rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600 print:hidden">
+        <div className="mx-auto mb-4 max-w-[210mm] rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-600 print:hidden">
           {error}
         </div>
       ) : null}

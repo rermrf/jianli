@@ -20,7 +20,7 @@ type fakeDraftPDFExporter struct {
 	content []byte
 }
 
-func (f fakeDraftPDFExporter) ExportResume(_ context.Context, _ json.RawMessage) ([]byte, error) {
+func (f fakeDraftPDFExporter) ExportResume(_ context.Context) ([]byte, error) {
 	return f.content, nil
 }
 

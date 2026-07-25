@@ -12,6 +12,7 @@ import (
 	"gorm.io/gorm"
 
 	"jianli/internal/config"
+	"jianli/internal/geoip"
 	"jianli/internal/handler"
 	"jianli/internal/middleware"
 	"jianli/internal/pdf"
@@ -45,13 +46,31 @@ func newRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 	router.Use(gin.Recovery())
 	router.Use(middleware.CORS(cfg.FrontendOrigin))
 
+	// Trust only loopback proxies so c.ClientIP() picks up X-Forwarded-For
+	// when nginx/Caddy fronts the Go server. Non-loopback traffic falls
+	// back to RemoteAddr which is also fine.
+	if err := router.SetTrustedProxies([]string{"127.0.0.1", "::1"}); err != nil {
+		log.Printf("warn: SetTrustedProxies: %v", err)
+	}
+
+	// Resolver always non-nil: Lookup if the xdb file is loadable, else a
+	// loopback-only fallback so visits from localhost / LAN still get a
+	// sensible city ("本地网络") rather than "未知".
+	var geoResolver geoip.Resolver
+	if l, err := geoip.NewLookup(cfg.IP2RegionPath); err == nil {
+		geoResolver = l
+	} else {
+		log.Printf("warn: ip2region disabled (%v); using loopback-only resolver", err)
+		geoResolver = geoip.NewLoopbackResolver()
+	}
+
 	resumeStore := store.NewResumeStore(db)
 	draftStore := store.NewResumeDraftStore(db, resumeStore)
 	visitorStore := store.NewVisitorStore(db)
 	siteSettingsStore := store.NewSiteSettingsStore(db)
-	resumeHandler := handler.NewResumeHandler(resumeStore, siteSettingsStore, pdf.NewExporter(cfg.BrowserPath))
+	resumeHandler := handler.NewResumeHandler(resumeStore, siteSettingsStore, pdf.NewExporter(cfg.BrowserPath, cfg.Port))
 	draftHandler := handler.NewResumeDraftHandler(draftStore)
-	visitorHandler := handler.NewVisitorHandler(visitorStore)
+	visitorHandler := handler.NewVisitorHandler(visitorStore, geoResolver)
 	settingsHandler := handler.NewSettingsHandler(siteSettingsStore)
 	uploadHandler := handler.NewUploadHandler(filepath.Clean("./data/uploads/avatars"))
 
@@ -61,6 +80,7 @@ func newRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 	router.POST("/api/visitors", visitorHandler.Create)
 	router.POST("/api/visitors/:id", visitorHandler.UpdateDuration)
 	router.PATCH("/api/visitors/:id", visitorHandler.UpdateDuration)
+	router.POST("/api/visitors/:id/pdf-export", visitorHandler.MarkPDFExported)
 	router.Static("/uploads", filepath.Clean("./data/uploads"))
 
 	protected := router.Group("/api")
@@ -75,6 +95,7 @@ func newRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 	protected.DELETE("/resume/drafts/:id", draftHandler.Delete)
 	protected.GET("/visitors", visitorHandler.List)
 	protected.GET("/visitors/stats", visitorHandler.Stats)
+	protected.GET("/visitors/trend", visitorHandler.Trend)
 	protected.POST("/upload/avatar", uploadHandler.UploadAvatar)
 
 	router.NoRoute(serveFrontend(filepath.Clean("./web/dist")))

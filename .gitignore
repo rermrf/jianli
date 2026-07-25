@@ -1,5 +1,8 @@
 ﻿.worktrees/
 data/uploads/
+data/ip2region_v4.xdb
+data/ip2region_v6.xdb
 web/node_modules/
 web/dist/
 config.json
+superpowers/

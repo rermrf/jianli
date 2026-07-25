@@ -13,6 +13,7 @@ type Config struct {
 	BrowserPath    string `json:"browserPath"`
 	DBPath         string `json:"dbPath"`
 	FrontendOrigin string `json:"frontendOrigin"`
+	IP2RegionPath  string `json:"ip2RegionPath"`
 	Port           string `json:"port"`
 }
 
@@ -40,6 +41,9 @@ func Load() (Config, error) {
 	}
 	if cfg.FrontendOrigin == "" {
 		cfg.FrontendOrigin = "http://localhost:5173"
+	}
+	if cfg.IP2RegionPath == "" {
+		cfg.IP2RegionPath = "./data/ip2region_v4.xdb"
 	}
 
 	return cfg, nil

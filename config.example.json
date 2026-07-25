@@ -3,5 +3,6 @@
   "browserPath": "/usr/bin/chromium",
   "port": "8088",
   "dbPath": "./data/resume.db",
-  "frontendOrigin": "https://wenemoji.com"
+  "frontendOrigin": "https://wenemoji.com",
+  "ip2RegionPath": "./data/ip2region_v4.xdb"
 }

@@ -8,6 +8,39 @@ import { PrintPage } from '../PrintPage'
 describe('print page', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    delete (window as { __printReady?: boolean }).__printReady
+  })
+
+  it('sets window.__printReady to true once the resume has loaded so the chromedp exporter can proceed', async () => {
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+      const url = String(input)
+
+      if (url === '/api/resume') {
+        return new Response(JSON.stringify({ code: 0, data: defaultResume }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      }
+
+      return new Response(JSON.stringify({ code: 0, data: {} }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      })
+    })
+
+    expect((window as { __printReady?: boolean }).__printReady).toBeUndefined()
+
+    render(
+      <MemoryRouter>
+        <PrintPage />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByText(defaultResume.profile.name)).toBeInTheDocument()
+
+    await waitFor(() => {
+      expect((window as { __printReady?: boolean }).__printReady).toBe(true)
+    })
   })
 
   it('renders profile facts in the header plus education and awards from the published resume', async () => {

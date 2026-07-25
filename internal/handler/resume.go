@@ -3,16 +3,18 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 
 	"jianli/internal/httpapi"
+	"jianli/internal/pdf"
 	"jianli/internal/store"
 )
 
 type PDFExporter interface {
-	ExportResume(ctx context.Context, resume json.RawMessage) ([]byte, error)
+	ExportResume(ctx context.Context) ([]byte, error)
 }
 
 type ResumeHandler struct {
@@ -87,14 +89,12 @@ func (h *ResumeHandler) ExportPDF(c *gin.Context) {
 		return
 	}
 
-	resume, err := h.store.Get()
+	pdfBytes, err := h.exporter.ExportResume(c.Request.Context())
 	if err != nil {
-		httpapi.Error(c, http.StatusInternalServerError, 50000, "failed to load resume")
-		return
-	}
-
-	pdfBytes, err := h.exporter.ExportResume(c.Request.Context(), resume)
-	if err != nil {
+		if errors.Is(err, pdf.ErrPrintTimeout) {
+			httpapi.Error(c, http.StatusGatewayTimeout, 50401, "pdf export timed out waiting for print page")
+			return
+		}
 		httpapi.Error(c, http.StatusInternalServerError, 50000, "failed to export pdf")
 		return
 	}

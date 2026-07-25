@@ -8,19 +8,21 @@ export interface VisitorStats {
 }
 
 export interface VisitorTrendPoint {
-  label: string
-  value: number
+  date: string // YYYY-MM-DD
+  count: number
 }
 
 export interface VisitorRecord {
   id: number
   ip: string
+  country: string
+  region: string
   city: string
+  isp: string
   device: string
   browser: string
   os: string
   visitTime: string
   duration: number
+  pdfExported: boolean
 }
-
-export type VisitorTrendByRange = Record<VisitorRange, VisitorTrendPoint[]>

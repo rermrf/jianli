@@ -1,7 +1,6 @@
 ﻿package handler
 
 import (
-	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -9,6 +8,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"jianli/internal/geoip"
 	"jianli/internal/httpapi"
 	"jianli/internal/model"
 	"jianli/internal/store"
@@ -16,6 +16,7 @@ import (
 
 type VisitorHandler struct {
 	store *store.VisitorStore
+	geoip geoip.Resolver
 }
 
 type createVisitorRequest struct {
@@ -27,8 +28,11 @@ type updateVisitorDurationRequest struct {
 	Duration int `json:"duration"`
 }
 
-func NewVisitorHandler(store *store.VisitorStore) *VisitorHandler {
-	return &VisitorHandler{store: store}
+// NewVisitorHandler requires a non-nil Resolver. Callers that fail to load
+// the ip2region xdb should pass geoip.NewLoopbackResolver() so loopback /
+// private IPs still get "本地网络" while public IPs fall through to "未知".
+func NewVisitorHandler(s *store.VisitorStore, resolver geoip.Resolver) *VisitorHandler {
+	return &VisitorHandler{store: s, geoip: resolver}
 }
 
 func (h *VisitorHandler) Create(c *gin.Context) {
@@ -46,11 +50,18 @@ func (h *VisitorHandler) Create(c *gin.Context) {
 	userAgent := c.GetHeader("User-Agent")
 	browser, osName, device := deriveUserAgentMetadata(userAgent)
 	ip := c.ClientIP()
-	city := deriveCity(ip)
+
+	country, region, city, isp, _ := h.geoip.Resolve(ip)
+	if city == "" {
+		city = "未知"
+	}
 
 	id, err := h.store.RecordVisit(model.VisitorRecord{
 		IP:        ip,
+		Country:   country,
+		Region:    region,
 		City:      city,
+		ISP:       isp,
 		Device:    device,
 		Browser:   browser,
 		OS:        osName,
@@ -91,6 +102,24 @@ func (h *VisitorHandler) Stats(c *gin.Context) {
 	httpapi.JSON(c, http.StatusOK, stats)
 }
 
+// Trend returns daily-bucketed visit counts. days must be a positive int;
+// frontend translates the 'all' range to days=30 to keep buckets reasonable.
+func (h *VisitorHandler) Trend(c *gin.Context) {
+	days := queryInt(c, "days", 7)
+	if days <= 0 {
+		httpapi.Error(c, http.StatusBadRequest, 40000, "days must be positive")
+		return
+	}
+
+	points, err := h.store.Trend(days)
+	if err != nil {
+		httpapi.Error(c, http.StatusInternalServerError, 50000, "failed to load trend")
+		return
+	}
+
+	httpapi.JSON(c, http.StatusOK, points)
+}
+
 func (h *VisitorHandler) UpdateDuration(c *gin.Context) {
 	visitorID, err := strconv.ParseInt(c.Param("id"), 10, 64)
 	if err != nil {
@@ -112,6 +141,25 @@ func (h *VisitorHandler) UpdateDuration(c *gin.Context) {
 	httpapi.JSON(c, http.StatusOK, gin.H{"updated": true})
 }
 
+// MarkPDFExported flips the pdf_exported flag for the visitor identified
+// by URL param :id. Public route — anyone can mark their own visit, since
+// the visitor ID is only known to a session that just received it from
+// /api/visitors POST.
+func (h *VisitorHandler) MarkPDFExported(c *gin.Context) {
+	visitorID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil {
+		httpapi.Error(c, http.StatusBadRequest, 40000, "invalid visitor id")
+		return
+	}
+
+	if err := h.store.MarkPDFExported(visitorID); err != nil {
+		httpapi.Error(c, http.StatusInternalServerError, 50000, "failed to mark pdf exported")
+		return
+	}
+
+	httpapi.JSON(c, http.StatusOK, gin.H{"updated": true})
+}
+
 func queryInt(c *gin.Context, key string, fallback int) int {
 	value := c.Query(key)
 	if value == "" {
@@ -124,17 +172,6 @@ func queryInt(c *gin.Context, key string, fallback int) int {
 	}
 
 	return parsed
-}
-
-func deriveCity(ip string) string {
-	parsedIP := net.ParseIP(ip)
-	if parsedIP == nil {
-		return "未知"
-	}
-	if parsedIP.IsLoopback() || parsedIP.IsPrivate() {
-		return "本地网络"
-	}
-	return "未知"
 }
 
 func deriveUserAgentMetadata(userAgent string) (browser string, osName string, device string) {

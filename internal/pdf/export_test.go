@@ -1,111 +1,155 @@
 package pdf
 
 import (
-	"encoding/json"
+	"context"
+	"errors"
+	"net"
+	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
-func TestBuildResumeViewIncludesAvatarEducationAwardsAndProjectURL(t *testing.T) {
-	uploadRoot := filepath.Join(t.TempDir(), "uploads")
-	avatarDir := filepath.Join(uploadRoot, "avatars")
-	if err := os.MkdirAll(avatarDir, 0o755); err != nil {
-		t.Fatalf("MkdirAll() returned error: %v", err)
-	}
-
-	avatarPath := filepath.Join(avatarDir, "avatar.png")
-	pngBytes := []byte{
-		0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A,
-		0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52,
-		0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01,
-		0x08, 0x06, 0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4,
-		0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41,
-		0x54, 0x78, 0x9C, 0x63, 0xF8, 0xCF, 0xC0, 0x00,
-		0x00, 0x03, 0x01, 0x01, 0x00, 0x18, 0xDD, 0x8D,
-		0x18, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E,
-		0x44, 0xAE, 0x42, 0x60, 0x82,
-	}
-	if err := os.WriteFile(avatarPath, pngBytes, 0o644); err != nil {
-		t.Fatalf("WriteFile() returned error: %v", err)
-	}
-
-	resume := json.RawMessage(`{
-		"profile": {
-			"name": "Test User",
-			"title": "Backend Engineer",
-			"age": 25,
-			"gender": "男",
-			"education": "本科",
-			"experience": "1年",
-			"location": "Hangzhou",
-			"hometown": "Ganzhou",
-			"phone": "123456789",
-			"email": "test@example.com",
-			"avatarUrl": "/uploads/avatars/avatar.png"
-		},
-		"skills": ["Go", "MySQL"],
-		"workExperience": [],
-		"projects": [{
-			"name": "AI Gateway",
-			"startDate": "2025.12",
-			"endDate": "2026.01",
-			"description": ["Unified model gateway"],
-			"url": "https://github.com/example/ai-gateway"
-		}],
-		"education": [{
-			"school": "JXUFE",
-			"major": "Computer Science",
-			"degree": "Bachelor",
-			"startDate": "2023.09",
-			"endDate": "2025.07"
-		}],
-		"awards": [{
-			"date": "2022.09",
-			"title": "Scholarship"
-		}]
-	}`)
-
-	view, err := buildResumeView(resume, uploadRoot)
+// findInstalledBrowser returns the path of an installed browser found via the
+// same fallback list ExportResume uses, or "" if none is available. Used by
+// integration tests to skip cleanly when chromedp can't run.
+func findInstalledBrowser(t *testing.T) string {
+	t.Helper()
+	path, err := resolveBrowserPath("", []string{
+		`C:\Program Files\Google\Chrome\Application\chrome.exe`,
+		`C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`,
+		`C:\Program Files\Microsoft\Edge\Application\msedge.exe`,
+		`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`,
+	})
 	if err != nil {
-		t.Fatalf("buildResumeView() returned error: %v", err)
+		return ""
 	}
+	return path
+}
 
-	html, err := renderResumeHTML(view)
+// startPrintStubServer stands up a local HTTP server that serves a minimal
+// /print page satisfying the chromedp wait conditions used by ExportResume:
+// a #print-root element and window.__printReady=true. Returns the listening
+// port and a cleanup func.
+func startPrintStubServer(t *testing.T) (string, func()) {
+	t.Helper()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/print", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(`<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body>
+<div id="print-root">stub print page</div>
+<script>window.__printReady = true;</script>
+</body>
+</html>`))
+	})
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
-		t.Fatalf("renderResumeHTML() returned error: %v", err)
+		t.Fatalf("net.Listen() returned error: %v", err)
+	}
+	server := &http.Server{Handler: mux, ReadHeaderTimeout: 3 * time.Second}
+	go func() { _ = server.Serve(listener) }()
+
+	addr := listener.Addr().(*net.TCPAddr)
+	port := strconv.Itoa(addr.Port)
+
+	cleanup := func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		_ = server.Shutdown(ctx)
+	}
+	return port, cleanup
+}
+
+// startSlowPrintServer serves a /print page that never sets window.__printReady,
+// so chromedp.Poll always times out. Used to assert the timeout is mapped to
+// ErrPrintTimeout.
+func startSlowPrintServer(t *testing.T) (string, func()) {
+	t.Helper()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/print", func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		_, _ = w.Write([]byte(`<!DOCTYPE html>
+<html><head><meta charset="utf-8"></head>
+<body><div id="print-root">never ready</div></body>
+</html>`))
+	})
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("net.Listen() returned error: %v", err)
+	}
+	server := &http.Server{Handler: mux, ReadHeaderTimeout: 3 * time.Second}
+	go func() { _ = server.Serve(listener) }()
+
+	addr := listener.Addr().(*net.TCPAddr)
+	port := strconv.Itoa(addr.Port)
+
+	cleanup := func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		defer cancel()
+		_ = server.Shutdown(ctx)
+	}
+	return port, cleanup
+}
+
+func TestExportResumeProducesPDFBytes(t *testing.T) {
+	browserPath := findInstalledBrowser(t)
+	if browserPath == "" {
+		t.Skip("no chrome/edge installed; skipping chromedp integration test")
 	}
 
-	if !strings.Contains(string(view.Profile.AvatarDataURL), "data:image/") {
-		t.Fatalf("expected avatar data url in view, got %q", view.Profile.AvatarDataURL)
-	}
+	port, cleanup := startPrintStubServer(t)
+	defer cleanup()
 
-	if len(view.Projects) != 1 {
-		t.Fatalf("expected 1 project, got %d", len(view.Projects))
-	}
+	exporter := NewExporter(browserPath, port)
 
-	if view.Projects[0].URL != "https://github.com/example/ai-gateway" {
-		t.Fatalf("expected project url to round-trip, got %q", view.Projects[0].URL)
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
 
-	for _, expected := range []string{
-		"data:image/",
-		"Test User",
-		"Backend Engineer",
-		"JXUFE",
-		"Scholarship",
-		"AI Gateway",
-	} {
-		if !strings.Contains(html, expected) {
-			t.Fatalf("expected rendered html to include %q", expected)
+	pdfBytes, err := exporter.ExportResume(ctx)
+	if err != nil {
+		t.Fatalf("ExportResume() returned error: %v", err)
+	}
+	if len(pdfBytes) == 0 {
+		t.Fatal("expected non-empty pdf bytes")
+	}
+	if !strings.HasPrefix(string(pdfBytes[:5]), "%PDF-") {
+		end := 5
+		if len(pdfBytes) < end {
+			end = len(pdfBytes)
 		}
+		t.Fatalf("expected pdf bytes to start with %%PDF-, got %q", string(pdfBytes[:end]))
+	}
+}
+
+func TestExportResumeReturnsErrPrintTimeoutWhenPageNeverReady(t *testing.T) {
+	browserPath := findInstalledBrowser(t)
+	if browserPath == "" {
+		t.Skip("no chrome/edge installed; skipping chromedp integration test")
 	}
 
-	for _, unexpected := range []string{"print preview", "personal info"} {
-		if strings.Contains(strings.ToLower(html), unexpected) {
-			t.Fatalf("expected rendered html to avoid %q", unexpected)
-		}
+	port, cleanup := startSlowPrintServer(t)
+	defer cleanup()
+
+	exporter := NewExporter(browserPath, port)
+
+	// We need an outer ctx slightly longer than the internal 10s Poll timeout
+	// so the Poll itself fires (not the outer context).
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	_, err := exporter.ExportResume(ctx)
+	if !errors.Is(err, ErrPrintTimeout) {
+		t.Fatalf("expected ErrPrintTimeout, got %v", err)
 	}
 }
 
@@ -125,19 +169,33 @@ func TestResolveBrowserPathPrefersConfiguredPath(t *testing.T) {
 	}
 }
 
-func TestRenderResumeHTMLUsesChineseCapableFontStack(t *testing.T) {
-	html, err := renderResumeHTML(resumeView{})
-	if err != nil {
-		t.Fatalf("renderResumeHTML() returned error: %v", err)
+func TestResolveBrowserPathReturnsErrorWhenNoneFound(t *testing.T) {
+	_, err := resolveBrowserPath("", []string{
+		filepath.Join(t.TempDir(), "missing-1.exe"),
+		filepath.Join(t.TempDir(), "missing-2.exe"),
+	})
+	if err == nil {
+		t.Fatal("expected error when no browser found, got nil")
 	}
+}
 
-	for _, expected := range []string{
-		"Noto Sans CJK SC",
-		"WenQuanYi Micro Hei",
-		"Microsoft YaHei",
-	} {
-		if !strings.Contains(html, expected) {
-			t.Fatalf("expected rendered html to include font %q", expected)
-		}
+func TestIsPollTimeoutDetectsKnownMessages(t *testing.T) {
+	cases := []struct {
+		name string
+		err  error
+		want bool
+	}{
+		{"nil", nil, false},
+		{"poll timeout (chromedp Poll)", errors.New("waiting for function failed: timeout"), true},
+		{"poll timeout (legacy)", errors.New("poll function timed out"), true},
+		{"context deadline", errors.New("context deadline exceeded"), true},
+		{"unrelated", errors.New("something else"), false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := isPollTimeout(tc.err); got != tc.want {
+				t.Fatalf("isPollTimeout(%v) = %v, want %v", tc.err, got, tc.want)
+			}
+		})
 	}
 }

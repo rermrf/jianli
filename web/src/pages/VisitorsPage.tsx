@@ -1,6 +1,11 @@
-﻿import { useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { visitorStatsByRange } from '../data/mockVisitors'
-import type { VisitorRange, VisitorRecord, VisitorStats } from '../types/visitors'
+import type {
+  VisitorRange,
+  VisitorRecord,
+  VisitorStats,
+  VisitorTrendPoint,
+} from '../types/visitors'
 import { Button } from '../components/common/Button'
 import { AppShell } from '../components/layout/AppShell'
 import { TopNav } from '../components/layout/TopNav'
@@ -9,7 +14,7 @@ import { StatsCards } from '../components/visitors/StatsCards'
 import { TrendChart } from '../components/visitors/TrendChart'
 import { VisitorList } from '../components/visitors/VisitorList'
 import { VisitorTable } from '../components/visitors/VisitorTable'
-import { buildTrendPoints, fetchVisitors, fetchVisitorStats } from '../lib/visitors'
+import { fetchVisitors, fetchVisitorStats, fetchVisitorTrend } from '../lib/visitors'
 
 const rangeOptions: { label: string; value: VisitorRange }[] = [
   { label: '7天', value: '7d' },
@@ -23,6 +28,7 @@ export function VisitorsPage() {
   const [range, setRange] = useState<VisitorRange>('7d')
   const [stats, setStats] = useState<VisitorStats>(visitorStatsByRange['7d'])
   const [records, setRecords] = useState<VisitorRecord[]>([])
+  const [trend, setTrend] = useState<VisitorTrendPoint[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -30,14 +36,16 @@ export function VisitorsPage() {
 
     async function loadVisitors() {
       setLoading(true)
-      const [nextStats, nextRecords] = await Promise.all([
+      const [nextStats, nextRecords, nextTrend] = await Promise.all([
         fetchVisitorStats(range),
         fetchVisitors(range),
+        fetchVisitorTrend(range),
       ])
 
       if (active) {
         setStats(nextStats)
         setRecords(nextRecords)
+        setTrend(nextTrend)
         setLoading(false)
       }
     }
@@ -77,9 +85,9 @@ export function VisitorsPage() {
       ) : (
         <>
           <StatsCards stats={stats} />
-          <TrendChart points={buildTrendPoints(records)} />
-          <VisitorList records={records} />
-          <VisitorTable records={records} />
+          <TrendChart points={trend} />
+          <VisitorList records={records} showPdfColumn={showPdfExport} />
+          <VisitorTable records={records} showPdfColumn={showPdfExport} />
         </>
       )}
     </AppShell>
