@@ -11,7 +11,7 @@ function makeRecords(count: number) {
   const now = new Date().toISOString()
   return Array.from({ length: count }).map((_, index) => ({
     id: index + 1,
-    ip: `112.17.45.${index + 10}`,
+    ip: index === 0 ? '240e:3b7:3272:d8d0:db09:c067:8d59:539e' : `112.17.45.${index + 10}`,
     country: '中国',
     region: '浙江',
     city: '杭州',
@@ -91,6 +91,7 @@ describe('visitors page', () => {
     )
 
     expect(await screen.findByText('128')).toBeInTheDocument()
+    expect(await screen.findAllByText('240e:3b7:3272:d8d0:db09:c067:8d59:539e')).toHaveLength(2)
 
     await user.click(screen.getByRole('button', { name: '30天' }))
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -9,8 +10,55 @@ import (
 	"testing"
 
 	"jianli/internal/config"
+	"jianli/internal/model"
 	"jianli/internal/store"
 )
+
+func TestNewRouterRecordsFullClientIPThroughDockerProxy(t *testing.T) {
+	db, err := store.Open(filepath.Join(t.TempDir(), "resume.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sqlDB.Close()
+	router := newRouter(config.Config{
+		AuthKey: "resume-key", TrustedProxies: []string{"127.0.0.1", "::1", "172.16.0.0/12"},
+	}, db)
+	for _, tc := range []struct{ name, remote, forwarded, wantIP string }{
+		{"Docker proxy chain", "172.20.0.3:54321", "112.17.45.201, 172.20.0.4", "112.17.45.201"},
+		{"forwarded IPv6", "172.20.0.3:54321", "240e:3b7:3272:d8d0:db09:c067:8d59:539e", "240e:3b7:3272:d8d0:db09:c067:8d59:539e"},
+		{"untrusted public sender", "8.8.8.8:54321", "112.17.45.202", "8.8.8.8"},
+		{"direct IPv6", "[2606:4700:4700::1111]:54321", "", "2606:4700:4700::1111"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "/api/visitors", strings.NewReader(`{"duration":0}`))
+			request.Header.Set("Content-Type", "application/json")
+			request.Header.Set("X-Forwarded-For", tc.forwarded)
+			request.RemoteAddr = tc.remote
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, request)
+			if recorder.Code != http.StatusOK {
+				t.Fatalf("create status=%d body=%s", recorder.Code, recorder.Body.String())
+			}
+			var payload struct {
+				Data struct{ ID int64 } `json:"data"`
+			}
+			if err := json.Unmarshal(recorder.Body.Bytes(), &payload); err != nil {
+				t.Fatal(err)
+			}
+			var record model.VisitorRecord
+			if err := db.First(&record, payload.Data.ID).Error; err != nil {
+				t.Fatal(err)
+			}
+			if record.IP != tc.wantIP {
+				t.Fatalf("stored IP=%q, want full client IP %q", record.IP, tc.wantIP)
+			}
+		})
+	}
+}
 
 func TestNewRouterRegistersCoreRoutes(t *testing.T) {
 	db, err := store.Open(filepath.Join(t.TempDir(), "resume.db"))

@@ -1,4 +1,4 @@
-﻿package handler
+package handler
 
 import (
 	"net/http"
@@ -48,25 +48,25 @@ func (h *VisitorHandler) Create(c *gin.Context) {
 	}
 
 	userAgent := c.GetHeader("User-Agent")
-	browser, osName, device := deriveUserAgentMetadata(userAgent)
+	metadata := deriveUserAgentMetadata(userAgent)
 	ip := c.ClientIP()
 
 	country, region, city, isp, _ := h.geoip.Resolve(ip)
-	if city == "" {
-		city = "未知"
-	}
 
 	id, err := h.store.RecordVisit(model.VisitorRecord{
-		IP:        ip,
-		Country:   country,
-		Region:    region,
-		City:      city,
-		ISP:       isp,
-		Device:    device,
-		Browser:   browser,
-		OS:        osName,
-		VisitTime: visitTime,
-		Duration:  request.Duration,
+		IP:             ip,
+		Country:        country,
+		Region:         region,
+		City:           city,
+		ISP:            isp,
+		Device:         metadata.Device,
+		Browser:        metadata.Browser,
+		OS:             metadata.OS,
+		OSVersion:      metadata.OSVersion,
+		BrowserVersion: metadata.BrowserVersion,
+		UserAgent:      userAgent,
+		VisitTime:      visitTime,
+		Duration:       request.Duration,
 	})
 	if err != nil {
 		httpapi.Error(c, http.StatusInternalServerError, 50000, "failed to record visitor")
@@ -86,6 +86,36 @@ func (h *VisitorHandler) List(c *gin.Context) {
 		httpapi.Error(c, http.StatusInternalServerError, 50000, "failed to list visitors")
 		return
 	}
+	// Fill missing geographic fields while preserving already known values.
+	for i := range records {
+		record := &records[i]
+		if locationKnown(record.Country) && locationKnown(record.Region) && locationKnown(record.City) && locationKnown(record.ISP) {
+			continue
+		}
+		country, region, city, isp, ok := h.geoip.Resolve(record.IP)
+		if !ok || (country == "" && region == "" && city == "") {
+			continue
+		}
+		changed := false
+		for _, field := range []struct {
+			target   *string
+			resolved string
+		}{
+			{&record.Country, country}, {&record.Region, region}, {&record.City, city}, {&record.ISP, isp},
+		} {
+			if !locationKnown(*field.target) && locationKnown(field.resolved) {
+				*field.target = field.resolved
+				changed = true
+			}
+		}
+		if !changed {
+			continue
+		}
+		if err := h.store.UpdateLocation(*record); err != nil {
+			httpapi.Error(c, http.StatusInternalServerError, 50000, "failed to update visitor location")
+			return
+		}
+	}
 
 	httpapi.JSON(c, http.StatusOK, records)
 }
@@ -102,12 +132,11 @@ func (h *VisitorHandler) Stats(c *gin.Context) {
 	httpapi.JSON(c, http.StatusOK, stats)
 }
 
-// Trend returns daily-bucketed visit counts. days must be a positive int;
-// frontend translates the 'all' range to days=30 to keep buckets reasonable.
+// Trend returns Beijing-day visits and distinct visitors. days=0 means all.
 func (h *VisitorHandler) Trend(c *gin.Context) {
 	days := queryInt(c, "days", 7)
-	if days <= 0 {
-		httpapi.Error(c, http.StatusBadRequest, 40000, "days must be positive")
+	if days < 0 {
+		httpapi.Error(c, http.StatusBadRequest, 40000, "days must not be negative")
 		return
 	}
 
@@ -174,45 +203,7 @@ func queryInt(c *gin.Context, key string, fallback int) int {
 	return parsed
 }
 
-func deriveUserAgentMetadata(userAgent string) (browser string, osName string, device string) {
-	lowerUA := strings.ToLower(userAgent)
-
-	switch {
-	case strings.Contains(lowerUA, "edg/"):
-		browser = "Edge"
-	case strings.Contains(lowerUA, "chrome/"):
-		browser = "Chrome"
-	case strings.Contains(lowerUA, "firefox/"):
-		browser = "Firefox"
-	case strings.Contains(lowerUA, "safari/") && !strings.Contains(lowerUA, "chrome/"):
-		browser = "Safari"
-	default:
-		browser = "Unknown"
-	}
-
-	switch {
-	case strings.Contains(lowerUA, "windows"):
-		osName = "Windows"
-	case strings.Contains(lowerUA, "android"):
-		osName = "Android"
-	case strings.Contains(lowerUA, "iphone") || strings.Contains(lowerUA, "ipad") || strings.Contains(lowerUA, "ios"):
-		osName = "iOS"
-	case strings.Contains(lowerUA, "mac os x") || strings.Contains(lowerUA, "macintosh"):
-		osName = "macOS"
-	case strings.Contains(lowerUA, "linux"):
-		osName = "Linux"
-	default:
-		osName = "Unknown"
-	}
-
-	switch {
-	case strings.Contains(lowerUA, "iphone"), strings.Contains(lowerUA, "android") && strings.Contains(lowerUA, "mobile"):
-		device = "Mobile"
-	case strings.Contains(lowerUA, "ipad"), strings.Contains(lowerUA, "tablet"):
-		device = "Tablet"
-	default:
-		device = "Desktop"
-	}
-
-	return browser, osName, device
+func locationKnown(value string) bool {
+	value = strings.TrimSpace(value)
+	return value != "" && value != "0" && value != "未知" && !strings.EqualFold(value, "unknown")
 }

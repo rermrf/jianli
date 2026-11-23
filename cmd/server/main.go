@@ -46,22 +46,15 @@ func newRouter(cfg config.Config, db *gorm.DB) *gin.Engine {
 	router.Use(gin.Recovery())
 	router.Use(middleware.CORS(cfg.FrontendOrigin))
 
-	// Trust only loopback proxies so c.ClientIP() picks up X-Forwarded-For
-	// when nginx/Caddy fronts the Go server. Non-loopback traffic falls
-	// back to RemoteAddr which is also fine.
-	if err := router.SetTrustedProxies([]string{"127.0.0.1", "::1"}); err != nil {
+	// Honor forwarded client addresses only from configured reverse proxies.
+	if err := router.SetTrustedProxies(cfg.TrustedProxies); err != nil {
 		log.Printf("warn: SetTrustedProxies: %v", err)
+		_ = router.SetTrustedProxies(nil)
 	}
 
-	// Resolver always non-nil: Lookup if the xdb file is loadable, else a
-	// loopback-only fallback so visits from localhost / LAN still get a
-	// sensible city ("本地网络") rather than "未知".
-	var geoResolver geoip.Resolver
-	if l, err := geoip.NewLookup(cfg.IP2RegionPath); err == nil {
-		geoResolver = l
-	} else {
-		log.Printf("warn: ip2region disabled (%v); using loopback-only resolver", err)
-		geoResolver = geoip.NewLoopbackResolver()
+	geoResolver, err := geoip.NewResolver(cfg.IP2RegionPath, cfg.IP2RegionV6Path)
+	if err != nil {
+		log.Printf("warn: some ip2region databases are unavailable: %v", err)
 	}
 
 	resumeStore := store.NewResumeStore(db)

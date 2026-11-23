@@ -1,4 +1,4 @@
-﻿package store
+package store
 
 import (
 	"errors"
@@ -20,7 +20,8 @@ func NewVisitorStore(db *gorm.DB) *VisitorStore {
 
 func (s *VisitorStore) RecordVisit(record model.VisitorRecord) (int64, error) {
 	var existing model.VisitorRecord
-	err := s.db.Where("ip = ? AND visit_time >= ?", record.IP, record.VisitTime.Add(-10*time.Minute)).Order("visit_time DESC").First(&existing).Error
+	// Shared public IPs can belong to different devices or browsers.
+	err := s.db.Where("ip = ? AND user_agent = ? AND visit_time >= ?", record.IP, record.UserAgent, record.VisitTime.Add(-10*time.Minute)).Order("visit_time DESC").First(&existing).Error
 	if err == nil {
 		return existing.ID, nil
 	}
@@ -39,6 +40,16 @@ func (s *VisitorStore) UpdateDuration(id int64, duration int) error {
 	return s.db.Model(&model.VisitorRecord{}).Where("id = ?", id).Update("duration", duration).Error
 }
 
+// UpdateLocation repairs geographic fields without changing visit metadata.
+func (s *VisitorStore) UpdateLocation(record model.VisitorRecord) error {
+	return s.db.Model(&model.VisitorRecord{}).Where("id = ?", record.ID).Updates(map[string]any{
+		"country": record.Country,
+		"region":  record.Region,
+		"city":    record.City,
+		"isp":     record.ISP,
+	}).Error
+}
+
 // MarkPDFExported flips pdf_exported = true on the visitor row identified
 // by id. Idempotent — calling twice is fine. Returns nil even when the row
 // is missing (admin already cleared it, or visitorID is stale).
@@ -55,8 +66,10 @@ func (s *VisitorStore) List(days, page, limit int) ([]model.VisitorRecord, error
 	}
 
 	query := s.db.Model(&model.VisitorRecord{})
+	start, end := visitorDayWindow(days, time.Now())
+	query = query.Where("julianday(visit_time) < julianday(?)", end.Format(time.RFC3339))
 	if days > 0 {
-		query = query.Where("visit_time >= ?", time.Now().AddDate(0, 0, -days))
+		query = query.Where("julianday(visit_time) >= julianday(?)", start.Format(time.RFC3339))
 	}
 
 	var records []model.VisitorRecord
@@ -65,9 +78,15 @@ func (s *VisitorStore) List(days, page, limit int) ([]model.VisitorRecord, error
 }
 
 func (s *VisitorStore) Stats(days int) (model.VisitorStats, error) {
+	return s.statsAt(days, time.Now())
+}
+
+func (s *VisitorStore) statsAt(days int, now time.Time) (model.VisitorStats, error) {
 	query := s.db.Model(&model.VisitorRecord{})
+	start, end := visitorDayWindow(days, now)
+	query = query.Where("julianday(visit_time) < julianday(?)", end.Format(time.RFC3339))
 	if days > 0 {
-		query = query.Where("visit_time >= ?", time.Now().AddDate(0, 0, -days))
+		query = query.Where("julianday(visit_time) >= julianday(?)", start.Format(time.RFC3339))
 	}
 
 	var result struct {
@@ -75,12 +94,15 @@ func (s *VisitorStore) Stats(days int) (model.VisitorStats, error) {
 		UniqueVisitors int
 		Average        float64
 	}
-	if err := query.Select("COUNT(*) AS total_visits, COUNT(DISTINCT ip) AS unique_visitors, COALESCE(AVG(duration), 0) AS average").Scan(&result).Error; err != nil {
+	if err := query.Select("COUNT(*) AS total_visits, COUNT(DISTINCT NULLIF(TRIM(ip), '')) AS unique_visitors, COALESCE(AVG(duration), 0) AS average").Scan(&result).Error; err != nil {
 		return model.VisitorStats{}, err
 	}
 
 	var todayVisits int64
-	if err := s.db.Model(&model.VisitorRecord{}).Where("date(visit_time) = date('now', 'localtime')").Count(&todayVisits).Error; err != nil {
+	today, _ := visitorDayWindow(1, now)
+	if err := s.db.Model(&model.VisitorRecord{}).
+		Where("julianday(visit_time) >= julianday(?) AND julianday(visit_time) < julianday(?)", today.Format(time.RFC3339), end.Format(time.RFC3339)).
+		Count(&todayVisits).Error; err != nil {
 		return model.VisitorStats{}, err
 	}
 
@@ -92,41 +114,60 @@ func (s *VisitorStore) Stats(days int) (model.VisitorStats, error) {
 	}, nil
 }
 
-// Trend returns visit counts bucketed by local-time day for the last N
-// days. Days <= 0 is rejected so callers cannot accidentally request a
-// full-table scan; the frontend translates 'all' to days=30 explicitly.
-//
-// Buckets are produced by SQLite using strftime with the 'localtime'
-// modifier, so the result depends on the process's TZ. Production sets
-// TZ=Asia/Shanghai in the Dockerfile; tests pin time.Local before running.
-//
-// Sparse days (no visits) are omitted from the result; the frontend pads
-// missing dates with count=0 to render a complete N-bar chart.
+// Analytics use Beijing calendar days, independent of server/browser TZ.
+var visitorTimeZone = time.FixedZone("Asia/Shanghai", 8*60*60)
+
+func visitorDayWindow(days int, now time.Time) (start, end time.Time) {
+	local := now.In(visitorTimeZone)
+	today := time.Date(local.Year(), local.Month(), local.Day(), 0, 0, 0, 0, visitorTimeZone)
+	return today.AddDate(0, 0, -days+1), today.AddDate(0, 0, 1)
+}
+
+// Trend returns a complete daily series with visit counts and distinct IPs.
+// days=0 includes history from the earliest visit through today.
 func (s *VisitorStore) Trend(days int) ([]model.VisitorTrendPoint, error) {
-	if days <= 0 {
-		return nil, errors.New("trend: days must be positive")
-	}
+	return s.trendAt(days, time.Now())
+}
 
-	cutoff := time.Now().AddDate(0, 0, -days+1) // include today's bucket
-
-	type row struct {
-		Date  string
-		Count int
+func (s *VisitorStore) trendAt(days int, now time.Time) ([]model.VisitorTrendPoint, error) {
+	if days < 0 {
+		return nil, errors.New("trend: days must not be negative")
 	}
-	var rows []row
-	err := s.db.Model(&model.VisitorRecord{}).
-		Select("strftime('%Y-%m-%d', visit_time, 'localtime') AS date, COUNT(*) AS count").
-		Where("visit_time >= ?", cutoff).
-		Group("date").
-		Order("date").
+	start, end := visitorDayWindow(days, now)
+	query := s.db.Model(&model.VisitorRecord{}).
+		Where("julianday(visit_time) < julianday(?)", end.Format(time.RFC3339))
+	if days > 0 {
+		query = query.Where("julianday(visit_time) >= julianday(?)", start.Format(time.RFC3339))
+	}
+	var rows []model.VisitorTrendPoint
+	err := query.
+		Select("date(visit_time, '+8 hours') AS date, COUNT(*) AS count, COUNT(DISTINCT NULLIF(TRIM(ip), '')) AS unique_visitors").
+		Group("date(visit_time, '+8 hours')").
+		Order("date ASC").
 		Scan(&rows).Error
 	if err != nil {
 		return nil, fmt.Errorf("trend query: %w", err)
 	}
 
-	points := make([]model.VisitorTrendPoint, len(rows))
-	for i, r := range rows {
-		points[i] = model.VisitorTrendPoint{Date: r.Date, Count: r.Count}
+	if days == 0 {
+		if len(rows) == 0 {
+			return []model.VisitorTrendPoint{}, nil
+		}
+		start, err = time.ParseInLocation("2006-01-02", rows[0].Date, visitorTimeZone)
+		if err != nil {
+			return nil, fmt.Errorf("trend date: %w", err)
+		}
+	}
+	byDate := make(map[string]model.VisitorTrendPoint, len(rows))
+	for _, row := range rows {
+		byDate[row.Date] = row
+	}
+	points := make([]model.VisitorTrendPoint, 0)
+	for day := start; day.Before(end); day = day.AddDate(0, 0, 1) {
+		date := day.Format("2006-01-02")
+		point := byDate[date]
+		point.Date = date
+		points = append(points, point)
 	}
 	return points, nil
 }

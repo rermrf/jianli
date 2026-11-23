@@ -1,8 +1,9 @@
-﻿package config
+package config
 
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -24,6 +25,46 @@ func withTempConfigDir(t *testing.T) string {
 	})
 
 	return tempDir
+}
+
+func TestLoadDefaultsSupportDockerProxiesAndBothIPFamilies(t *testing.T) {
+	withTempConfigDir(t)
+	if err := os.WriteFile("config.json", []byte(`{"authKey":"resume-key"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.IP2RegionPath != "./data/ip2region_v4.xdb" || cfg.IP2RegionV6Path != "./data/ip2region_v6.xdb" {
+		t.Fatalf("unexpected database paths: %q %q", cfg.IP2RegionPath, cfg.IP2RegionV6Path)
+	}
+	if !reflect.DeepEqual(cfg.TrustedProxies, []string{"127.0.0.1", "::1", "172.16.0.0/12"}) {
+		t.Fatalf("unexpected trusted proxies: %v", cfg.TrustedProxies)
+	}
+}
+
+func TestLoadAllowsDisablingProxiesAndRejectsInvalidProxies(t *testing.T) {
+	withTempConfigDir(t)
+	for _, tc := range []struct {
+		proxies string
+		wantErr bool
+	}{
+		{`[]`, false},
+		{`["192.168.20.0/24", "::1"]`, false},
+		{`["*"]`, true},
+	} {
+		if err := os.WriteFile("config.json", []byte(`{"authKey":"resume-key","trustedProxies":`+tc.proxies+`}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+		cfg, err := Load()
+		if (err != nil) != tc.wantErr {
+			t.Fatalf("proxies %s: err=%v", tc.proxies, err)
+		}
+		if tc.proxies == `[]` && len(cfg.TrustedProxies) != 0 {
+			t.Fatal("explicit empty trustedProxies must disable forwarded headers")
+		}
+	}
 }
 
 func TestLoadUsesAuthKeyFromConfigFile(t *testing.T) {

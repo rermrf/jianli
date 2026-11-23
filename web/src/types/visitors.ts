@@ -10,6 +10,7 @@ export interface VisitorStats {
 export interface VisitorTrendPoint {
   date: string // YYYY-MM-DD
   count: number
+  uniqueVisitors: number
 }
 
 export interface VisitorRecord {
@@ -22,6 +23,9 @@ export interface VisitorRecord {
   device: string
   browser: string
   os: string
+  osVersion?: string
+  browserVersion?: string
+  userAgent?: string
   visitTime: string
   duration: number
   pdfExported: boolean

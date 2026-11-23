@@ -42,7 +42,10 @@ Recommended production content:
   "browserPath": "/usr/bin/chromium",
   "port": "8088",
   "dbPath": "./data/resume.db",
-  "frontendOrigin": "https://wenemoji.com"
+  "frontendOrigin": "https://wenemoji.com",
+  "ip2RegionPath": "./data/ip2region_v4.xdb",
+  "ip2RegionV6Path": "./data/ip2region_v6.xdb",
+  "trustedProxies": ["127.0.0.1", "::1", "172.16.0.0/12"]
 }
 ```
 
@@ -50,6 +53,13 @@ Notes:
 - all runtime business config now lives in `config.json`
 - `config.example.json` is the only tracked template
 - keep `port` as `8088`
+- `trustedProxies` must include the IP or CIDR of the Nginx container seen by the app; the default includes Docker's usual `172.16.0.0/12` bridge range. For a custom Docker subnet, replace it with that subnet. Use `[]` for direct access without a reverse proxy.
+- The image downloads pinned IPv4 and IPv6 ip2region databases at build time and stores them in `/app/geoip`. Files specified in `config.json` take priority; the bundled files are used when the configured files are unavailable. Mounting `data` does not hide the bundled databases.
+- For a local Go run, download both databases first with `bash deploy/scripts/download-geoip.sh ./data`. The server loads them once at startup; restart after replacing them.
+- Opening the visitor list automatically fills and saves previously unknown regions when the stored IP can be resolved. Local/private addresses display `本地网络`; old rows that contain only a proxy IP cannot recover the original client IP.
+- Visitor records retain the full IPv4/IPv6 address and request User-Agent. The page displays country/province/city, operator, device type, operating system, and available system/browser versions. Windows NT 10.0 cannot distinguish Windows 10 from 11 and is displayed as `Windows 10/11`. Existing system fields remain usable; versions that were never recorded cannot be reconstructed.
+- Recent-visit deduplication uses both IP and User-Agent so different systems or browsers behind one public IP retain separate records. New metadata columns are migrated automatically on server startup.
+- Daily analytics use Beijing calendar dates for the chart, summary cards and visitor list. The chart defaults to distinct visitors per day (IP-based), can switch to recorded visit counts, fills zero-visit days and provides a daily detail table. `7天` and `30天` include today; `全部` starts at the earliest recorded visit.
 
 ## 4. First deployment
 

@@ -4,5 +4,7 @@
   "port": "8088",
   "dbPath": "./data/resume.db",
   "frontendOrigin": "https://wenemoji.com",
-  "ip2RegionPath": "./data/ip2region_v4.xdb"
+  "ip2RegionPath": "./data/ip2region_v4.xdb",
+  "ip2RegionV6Path": "./data/ip2region_v6.xdb",
+  "trustedProxies": ["127.0.0.1", "::1", "172.16.0.0/12"]
 }

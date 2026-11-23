@@ -21,15 +21,6 @@ function rangeToDays(range: VisitorRange) {
   }
 }
 
-/**
- * For the trend endpoint we never send days=0 — backend rejects it. The
- * "all" range is mapped to 30 days so the chart stays readable.
- */
-function rangeToTrendDays(range: VisitorRange) {
-  const days = rangeToDays(range)
-  return days > 0 ? days : 30
-}
-
 function authHeaders() {
   return {
     'X-Auth-Key': getAuthKey() ?? '',
@@ -54,12 +45,10 @@ export async function fetchVisitors(range: VisitorRange) {
 }
 
 /**
- * Fetch the daily-bucketed visit trend for the selected range. Backend
- * returns only days that had visits; the frontend pads missing dates with
- * count=0 so the chart always shows N continuous bars.
+ * Fetch daily visits and distinct visitors for the selected calendar range.
  */
 export async function fetchVisitorTrend(range: VisitorRange): Promise<VisitorTrendPoint[]> {
-  const days = rangeToTrendDays(range)
+  const days = rangeToDays(range)
   const points = await apiFetch<VisitorTrendPoint[]>(
     `/api/visitors/trend?days=${days}`,
     {
@@ -76,24 +65,26 @@ export async function fetchVisitorTrend(range: VisitorRange): Promise<VisitorTre
  */
 export function padTrend(points: VisitorTrendPoint[], days: number): VisitorTrendPoint[] {
   const byDate = new Map(points.map((p) => [p.date, p.count]))
+  const uniqueByDate = new Map(points.map((p) => [p.date, p.uniqueVisitors]))
   const out: VisitorTrendPoint[] = []
-  const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  // Shift UTC to Beijing time; use UTC accessors to ignore the browser TZ.
+  const today = new Date(Date.now() + 8 * 60 * 60 * 1000)
+  today.setUTCHours(0, 0, 0, 0)
+  if (days === 0) {
+    if (points.length === 0) return []
+    const firstDate = [...byDate.keys()].sort()[0]
+    const first = new Date(`${firstDate}T00:00:00Z`)
+    if (Number.isNaN(first.getTime())) return []
+    days = Math.floor((today.getTime() - first.getTime()) / (24 * 60 * 60 * 1000)) + 1
+  }
 
   for (let i = days - 1; i >= 0; i -= 1) {
     const d = new Date(today)
-    d.setDate(today.getDate() - i)
-    const key = formatDateKey(d)
-    out.push({ date: key, count: byDate.get(key) ?? 0 })
+    d.setUTCDate(today.getUTCDate() - i)
+    const key = d.toISOString().slice(0, 10)
+    out.push({ date: key, count: byDate.get(key) ?? 0, uniqueVisitors: uniqueByDate.get(key) ?? 0 })
   }
   return out
-}
-
-function formatDateKey(d: Date): string {
-  const year = d.getFullYear()
-  const month = `${d.getMonth() + 1}`.padStart(2, '0')
-  const day = `${d.getDate()}`.padStart(2, '0')
-  return `${year}-${month}-${day}`
 }
 
 export async function recordVisit() {

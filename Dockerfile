@@ -5,6 +5,10 @@ RUN npm ci
 COPY web/ ./
 RUN npm run build
 
+FROM node:24-bookworm AS geoip-data
+COPY deploy/scripts/download-geoip.sh /download-geoip.sh
+RUN bash /download-geoip.sh /out/geoip
+
 FROM golang:1.25-bookworm AS go-build
 WORKDIR /src
 COPY go.mod go.sum ./
@@ -21,9 +25,7 @@ WORKDIR /app
 COPY --from=go-build /out/jianli-server /app/bin/jianli-server
 RUN mkdir -p /app/web/dist /app/data/uploads/avatars
 COPY --from=web-build /src/web/dist /app/web/dist
-# Copy the ip2region xdb if present in the build context. The wildcard
-# pattern keeps the build green when the file is absent; the server then
-# falls back to the loopback-only resolver and logs a warning.
-COPY data/ip2region_v*.xdb* /app/data/
+# Keep bundled databases outside /app/data so its host mount cannot hide them.
+COPY --from=geoip-data /out/geoip /app/geoip
 EXPOSE 8080
 CMD ["/app/bin/jianli-server"]

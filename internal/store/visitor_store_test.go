@@ -1,4 +1,4 @@
-﻿package store
+package store
 
 import (
 	"path/filepath"
@@ -35,6 +35,47 @@ func TestVisitorStoreDedupesRecentIP(t *testing.T) {
 
 	if firstID != secondID {
 		t.Fatalf("expected duplicate IP within 10 minutes to reuse row, got %d and %d", firstID, secondID)
+	}
+}
+
+func TestVisitorStoreKeepsDifferentDevicesOnTheSameIP(t *testing.T) {
+	db, err := Open(filepath.Join(t.TempDir(), "resume.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer sqlDB.Close()
+	visitorStore := NewVisitorStore(db)
+	first := model.VisitorRecord{IP: "39.182.123.234", UserAgent: "Windows Chrome", Device: "Desktop", OS: "Windows", VisitTime: time.Now()}
+	id, err := visitorStore.RecordVisit(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second := first
+	second.UserAgent, second.Device, second.OS = "iPhone Safari", "Mobile", "iOS"
+	otherID, err := visitorStore.RecordVisit(second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if id == otherID {
+		t.Fatal("different devices on a shared IP must have distinct visitor records")
+	}
+	repeatID, err := visitorStore.RecordVisit(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if repeatID != id {
+		t.Fatal("same IP and user agent should still deduplicate recent visits")
+	}
+	stats, err := visitorStore.Stats(0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.TotalVisits != 2 || stats.UniqueVisitors != 1 {
+		t.Fatalf("unexpected shared-IP stats: %+v", stats)
 	}
 }
 
