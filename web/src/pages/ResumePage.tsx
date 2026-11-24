@@ -1,27 +1,43 @@
-import { ResumeShowcase, ResumeSkeleton } from '../components/resume/showcase'
+import { Link } from 'react-router-dom'
+import { Button } from '../components/common/Button'
+import { AppShell } from '../components/layout/AppShell'
+import { TopNav } from '../components/layout/TopNav'
+import { ResumeDesktopLayout } from '../components/resume/ResumeDesktopLayout'
+import { ResumeMobileLayout } from '../components/resume/ResumeMobileLayout'
 import { useResumeDraft } from '../hooks/useResumeDraft'
 import { useVisitorTracking } from '../hooks/useVisitorTracking'
 
 export function ResumePage() {
   const { draft, loading, siteSettings } = useResumeDraft()
   const showPdfExport = !loading && siteSettings.allowPdfExport
+
+  // Track this visit + send 15s heartbeats once the resume has loaded.
+  // Hook handles cross-page session continuity via sessionStorage.
   useVisitorTracking(!loading)
 
   if (loading) {
     return (
-      <main className="resume-public min-h-screen">
-        <div className="mx-auto max-w-[1200px] space-y-6 px-4 py-6 md:px-6 md:py-10">
-          <ResumeSkeleton />
+      <AppShell contentClassName="space-y-6">
+        <TopNav showPdfExport={showPdfExport} />
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-[var(--shadow-card)]">
+          加载中...
         </div>
-      </main>
+      </AppShell>
     )
   }
 
   return (
-    <main className="resume-public min-h-screen">
-      <div className="mx-auto max-w-[1200px] px-4 py-6 md:px-6 md:py-10">
-        <ResumeShowcase resume={draft} showPdfExport={showPdfExport} />
-      </div>
-    </main>
+    <AppShell contentClassName="space-y-6">
+      <TopNav showPdfExport={showPdfExport} />
+      <ResumeMobileLayout resume={draft} />
+      <ResumeDesktopLayout resume={draft} />
+      {showPdfExport ? (
+        <div className="md:hidden">
+          <Link to="/print">
+            <Button className="w-full">导出 PDF</Button>
+          </Link>
+        </div>
+      ) : null}
+    </AppShell>
   )
 }
